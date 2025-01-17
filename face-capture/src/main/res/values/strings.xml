@@ -1,0 +1,14 @@
+<resources>
+    <string name="title_activity_face_capture">FaceCaptureActivity</string>
+    <string name="preparing_face_detection">Preparing face detection</string>
+    <string name="great_hold_it">Great, hold it</string>
+    <string name="turn_to_follow_the_arrow">Turn to follow the arrow</string>
+    <string name="align_your_face_with_the_oval">Align your face with the oval</string>
+    <string name="tips">Tips</string>
+    <string name="tips_shadows">Avoid standing in a light that throws sharp shadows like in sharp sunlight or directly under a lamp.</string>
+    <string name="tips_glasses">If you can, take off your glasses.</string>
+    <string name="tips_backgrounds">Avoid standing in front of busy backgrounds.</string>
+    <string name="loading">Loading ...</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="cancel">Cancel</string>
+</resources>

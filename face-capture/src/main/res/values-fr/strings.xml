@@ -1,0 +1,14 @@
+<resources>
+    <string name="title_activity_face_capture">FaceCaptureActivity</string>
+    <string name="preparing_face_detection">Préparation de la détection du visage</string>
+    <string name="great_hold_it">Parfait, ne bougez plus</string>
+    <string name="turn_to_follow_the_arrow">Tournez en suivant la flèche</string>
+    <string name="align_your_face_with_the_oval">Alignez votre visage avec l\'ovale</string>
+    <string name="tips">Astuces</string>
+    <string name="tips_shadows">Évitez de vous positionner sous un éclairage qui crée des ombres prononcées, comme sous un soleil plombant ou directement sous une lampe.</string>
+    <string name="tips_glasses">Si possible, retirez vos lunettes.</string>
+    <string name="tips_backgrounds">Évitez de vous tenir devant un arrière-plan chargé.</string>
+    <string name="loading">Loading ...</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="cancel">Annuler</string>
+</resources>
