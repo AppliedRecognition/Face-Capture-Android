@@ -14,10 +14,15 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenLocal()
-        maven("https://s01.oss.sonatype.org/content/groups/staging/")
         google()
         mavenCentral()
+        maven {
+            url = uri("https://maven.pkg.github.com/AppliedRecognition/Ver-ID-Android-Releases")
+            credentials {
+                username = settings.extra["gpr.user"] as String?
+                password = settings.extra["gpr.token"] as String?
+            }
+        }
     }
 }
 
