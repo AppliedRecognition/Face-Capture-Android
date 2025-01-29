@@ -19,30 +19,18 @@ Please [contact Applied Recognition](mailto:support@appliedrecognition.com) to o
 2. Add the following to your project's **settings.gradle.kts**:
 
     ```kotlin
-    buildscript {
-        repositories {
-            mavenCentral()
-            mavenLocal()
-            maven {
-                url = uri("https://maven.pkg.github.com/AppliedRecognition/Android-ARC-repo-extension")
-                credentials {
-                    username = System.getenv("GITHUB_USER")
-                    password = System.getenv("GITHUB_TOKEN")
-                }
-            }
-        }
-        dependencies {
-            classpath("com.appliedrec.verid3:arc-repo-extension:1.0.0")
-        }
-    }
-    
     dependencyResolutionManagement {
         repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
         repositories {
             google()
-            mavenLocal()
             mavenCentral()
-            veridFaceCapture()
+            maven {
+                url = uri("https://maven.pkg.github.com/AppliedRecognition/Ver-ID-3D-Android-Libraries")
+                credentials {
+                    username = settings.extra["gpr.user"] as String?
+                    password = settings.extra["gpr.token"] as String?
+                }
+            }
         }
     }
     ```
