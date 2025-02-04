@@ -1,6 +1,5 @@
 package com.appliedrec.verid3.facecapture
 
-import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,15 +11,20 @@ import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.Collections
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 abstract class FaceTrackingPlugin<T> {
     abstract val name: String
 
     private val faceTrackingResultFlow = MutableSharedFlow<FaceTrackingResult>(extraBufferCapacity = 1)
     private var task: Job? = null
-    private val results = mutableListOf<FaceTrackingPluginResult<T>>()
     private var isActive = true
-    private val mutex = Mutex()
+    private val lock = ReentrantLock()
+    private val _results = mutableListOf<FaceTrackingPluginResult<T>>()
+    val results: List<FaceTrackingPluginResult<T>> get() = lock.withLock { Collections.unmodifiableList(_results) }
+    val hasException: Boolean get() = results.any { it.result.isFailure }
 
     init {
         task = CoroutineScope(Dispatchers.Default).launch {
@@ -41,8 +45,8 @@ abstract class FaceTrackingPlugin<T> {
                             value?.let {
                                 val result =
                                     FaceTrackingPluginResult(input.serialNumber, input.time, it)
-                                mutex.withLock {
-                                    results.add(result)
+                                lock.withLock {
+                                    _results.add(result)
                                 }
                             }
                         }
@@ -50,8 +54,8 @@ abstract class FaceTrackingPlugin<T> {
             } catch (e: CancellationException) {
                 // Do nothing
             } catch (e: Exception) {
-                mutex.withLock {
-                    results.add(FaceTrackingPluginResult(0UL, System.currentTimeMillis(), Result.failure(e)))
+                lock.withLock {
+                    _results.add(FaceTrackingPluginResult(0UL, System.currentTimeMillis(), Result.failure(e)))
                 }
             }
         }
@@ -61,7 +65,7 @@ abstract class FaceTrackingPlugin<T> {
         isActive = false
         task?.cancel()
         task = null
-        val results = mutex.withLock { this.results.toList() }
+        val results = lock.withLock { this._results.toList() }
         val summary = createSummaryFromResults(results)
         return Pair(name, TaskResults(summary, results))
     }

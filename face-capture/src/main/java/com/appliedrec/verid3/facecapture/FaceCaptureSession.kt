@@ -81,8 +81,12 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
                 }
 //                val metadata = pluginFutures.associate { it.await() }
                 val metadata = plugins.associate { it.stop() }
-                finishSession()
-                result = FaceCaptureSessionResult.Success(capturedFaces, metadata)
+                if (plugins.any { it.hasException }) {
+                    val exception = FaceTrackingPluginException(plugins)
+                    result = FaceCaptureSessionResult.Failure(capturedFaces, metadata, exception)
+                } else {
+                    result = FaceCaptureSessionResult.Success(capturedFaces, metadata)
+                }
             } catch (e: Exception) {
                 if (!isActive) {
                     finishSession()
