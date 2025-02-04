@@ -93,7 +93,7 @@ publishing {
             }
             groupId = "com.appliedrec.verid3"
             artifactId = "face-capture"
-            version = "1.0.0"
+            version = "1.0.1"
 
             pom {
                 name.set("Face Capture")
