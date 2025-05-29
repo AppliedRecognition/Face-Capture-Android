@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrainsKotlinAndroid)
     kotlin("kapt")
     alias(libs.plugins.serializationJson)
+    alias(libs.plugins.kotlinCompose)
 }
 
 android {

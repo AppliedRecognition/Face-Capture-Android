@@ -3,6 +3,9 @@ package com.appliedrec.verid3.facecapture
 import com.appliedrec.livenessdetection.common.ISpoofDetector
 import com.appliedrec.livenessdetection.common.isImageSpoofed
 import com.appliedrec.verid3.common.serialization.toBitmap
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.atomic.AtomicBoolean
 
 class LivenessDetectionPlugin(val spoofDetectors: Array<ISpoofDetector>): FaceTrackingPlugin<Unit>() {
@@ -10,22 +13,22 @@ class LivenessDetectionPlugin(val spoofDetectors: Array<ISpoofDetector>): FaceTr
     var maxPositiveFrameCount: Int = 3
     private val isClosed = AtomicBoolean(false)
 
-    override suspend fun processFaceTrackingResult(faceTrackingResult: FaceTrackingResult): Unit? {
+    override suspend fun processFaceTrackingResult(faceTrackingResult: FaceTrackingResult): Unit? = coroutineScope {
         if (isClosed.get()) {
-            return null
+            return@coroutineScope null
         }
         val image = faceTrackingResult.input?.image?.toBitmap()
         val face = faceTrackingResult.face
         if (image == null || face == null) {
-            return null
+            return@coroutineScope null
         }
-        val isSpoofed = this.spoofDetectors.map { spoofDetector ->
-            spoofDetector.isImageSpoofed(image, face.bounds)
-        }.any { it }
+        val isSpoofed = spoofDetectors.map { spoofDetector ->
+            async { spoofDetector.isImageSpoofed(image!!, face.bounds) }
+        }.awaitAll().any { it }
         if (isSpoofed) {
             throw Exception("Liveness test failed")
         }
-        return Unit
+        Unit
     }
 
     override suspend fun createSummaryFromResults(results: List<FaceTrackingPluginResult<Unit>>): String {

@@ -39,6 +39,8 @@ abstract class FaceTrackingPlugin<T> {
                                 processFaceTrackingResult(faceTrackingResult)?.let {
                                     value = Result.success(it)
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 value = Result.failure(e)
                             }

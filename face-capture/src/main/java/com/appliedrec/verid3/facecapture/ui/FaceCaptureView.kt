@@ -7,12 +7,16 @@ import android.graphics.Matrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -129,36 +133,52 @@ fun FaceCaptureView(
     }
     val faceTrackingResult by session.faceTrackingResult.collectAsState(initial = FaceTrackingResult.Created(Bearing.STRAIGHT))
     val angleBearingEvaluation = AngleBearingEvaluation(session.settings)
-    BoxWithConstraints(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-    ) {
-        val expectedFaceBounds = session.settings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
-        val scaledFaceTrackingResult = faceTrackingResult.scaledToViewSize(maxWidth.toFloat(), maxHeight.toFloat(), expectedFaceBounds, !configuration.useBackCamera)
-        val prompt = configuration.textPromptProvider(scaledFaceTrackingResult)
-
-        val cameraTransform: GraphicsLayerScope.() -> Unit = createCameraTransform(
-            scaledFaceTrackingResult = scaledFaceTrackingResult,
-            sessionSettings = session.settings,
-            maxWidth = maxWidth,
-            maxHeight = maxHeight
-        )
-        LaunchedEffect(faceTrackingResult) {
-            configuration.textPrompt.emit(prompt)
-        }
-        preview(imageFlow, maxWidth, maxHeight, scaledFaceTrackingResult, cameraTransform)
-        if (faceTrackingResult is FaceTrackingResult.Started && secondsRemainingToStart > 0) {
-            Text(text ="%d".format(secondsRemainingToStart), modifier = Modifier.align(Alignment.Center), fontSize = ((faceTrackingResult.expectedFaceBounds?.height() ?: 96f) * 0.5f).sp, color = Color.White)
-        }
-        FaceArrow(faceTrackingResult = scaledFaceTrackingResult, angleBearingEvaluation = angleBearingEvaluation, isMirrored = !configuration.useBackCamera)
-        if (configuration.showTextPrompts) {
-            Text(
-                text = prompt,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+        BoxWithConstraints(
+            contentAlignment = Alignment.Center,
+            modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        ) {
+            val expectedFaceBounds =
+                session.settings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
+            val scaledFaceTrackingResult = faceTrackingResult.scaledToViewSize(
+                maxWidth.toFloat(),
+                maxHeight.toFloat(),
+                expectedFaceBounds,
+                !configuration.useBackCamera
             )
+            val prompt = configuration.textPromptProvider(scaledFaceTrackingResult)
+
+            val cameraTransform: GraphicsLayerScope.() -> Unit = createCameraTransform(
+                scaledFaceTrackingResult = scaledFaceTrackingResult,
+                sessionSettings = session.settings,
+                maxWidth = maxWidth,
+                maxHeight = maxHeight
+            )
+            LaunchedEffect(faceTrackingResult) {
+                configuration.textPrompt.emit(prompt)
+            }
+            preview(imageFlow, maxWidth, maxHeight, scaledFaceTrackingResult, cameraTransform)
+            if (faceTrackingResult is FaceTrackingResult.Started && secondsRemainingToStart > 0) {
+                Text(
+                    text = "%d".format(secondsRemainingToStart),
+                    modifier = Modifier.align(Alignment.Center),
+                    fontSize = ((faceTrackingResult.expectedFaceBounds?.height() ?: 96f) * 0.5f).sp,
+                    color = Color.White
+                )
+            }
+            FaceArrow(
+                faceTrackingResult = scaledFaceTrackingResult,
+                angleBearingEvaluation = angleBearingEvaluation,
+                isMirrored = !configuration.useBackCamera
+            )
+            if (configuration.showTextPrompts) {
+                Text(
+                    text = prompt,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                )
+            }
         }
     }
 }

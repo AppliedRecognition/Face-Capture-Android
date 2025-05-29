@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.serializationJson)
+    alias(libs.plugins.kotlinCompose)
     `maven-publish`
     signing
 }
@@ -93,7 +94,7 @@ publishing {
             }
             groupId = "com.appliedrec.verid3"
             artifactId = "face-capture"
-            version = "1.0.1"
+            version = "1.0.2"
 
             pom {
                 name.set("Face Capture")

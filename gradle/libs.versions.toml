@@ -19,9 +19,9 @@ veridfacedetectionmp = "1.0.0"
 kotlinSerializationJson = "1.6.3"
 kotlinPluginSerializationJson = "1.5.31"
 sceneview = "2.2.1"
-livenessDetectionCommon = "1.0.1"
-spoofDeviceDetection = "1.0.1"
-spoofDeviceDetectionModels = "1.0.1"
+livenessDetectionCommon = "1.1.0"
+spoofDeviceDetection = "2.1.1"
+spoofDeviceDetectionModels = "2.1.1"
 materialIconsExtended = "1.6.8"
 accompanist = "0.30.1"
 coreKtxVersion = "1.15.0"
@@ -71,4 +71,5 @@ androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 serializationJson = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinPluginSerializationJson" }
+kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version = "2.0.0" }
 
