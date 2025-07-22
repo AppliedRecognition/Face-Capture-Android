@@ -1,5 +1,7 @@
 package com.appliedrec.verid3.facecapture
 
+import android.graphics.RectF
+import com.appliedrec.verid3.common.Bearing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,8 +11,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.Collections
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -65,7 +65,16 @@ abstract class FaceTrackingPlugin<T> {
 
     suspend fun stop(): Pair<String, TaskResults<T>> {
         isActive = false
-        task?.cancel()
+        faceTrackingResultFlow.emit(FaceTrackingResult.Waiting(Bearing.STRAIGHT,
+            RectF(0f, 0f, 0f, 0f)
+        ))
+        task?.let {
+            if (it.isActive) {
+                it.join()
+            } else {
+                it.cancel()
+            }
+        }
         task = null
         val results = lock.withLock { this._results.toList() }
         val summary = createSummaryFromResults(results)

@@ -1,0 +1,1 @@
+sourceset_dependencies='{":face-capture:dokkaHtml/debug":[],":face-capture:dokkaHtml/main":[],":face-capture:dokkaHtml/release":[]}'

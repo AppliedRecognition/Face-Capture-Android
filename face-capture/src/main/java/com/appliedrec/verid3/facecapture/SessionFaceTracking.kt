@@ -2,7 +2,6 @@ package com.appliedrec.verid3.facecapture
 
 import android.graphics.PointF
 import android.graphics.RectF
-import android.util.Log
 import androidx.core.util.SizeFCompat
 import com.appliedrec.verid3.common.Bearing
 import com.appliedrec.verid3.common.EulerAngle
@@ -10,10 +9,6 @@ import com.appliedrec.verid3.common.Face
 import com.appliedrec.verid3.common.FaceDetection
 
 internal class SessionFaceTracking(private val faceDetection: FaceDetection, private val settings: FaceCaptureSessionSettings) {
-
-    companion object {
-        private const val TAG = "Ver-ID session"
-    }
 
     private data class AlignedFace(val face: Face, var isAligned: Boolean = false, var isFixed: Boolean = false)
 
@@ -48,7 +43,6 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
         }
         val face = this.faceDetection.detectFacesInImage(imageCapture.image, 1).firstOrNull()
         if (face != null) {
-//            Log.d(TAG, "Face detected: {x: ${face.bounds.left.toInt()}, y: ${face.bounds.top.toInt()}, width: ${face.bounds.width().toInt()}, height: ${face.bounds.height().toInt()}, yaw: ${face.angle.yaw.toInt()}, pitch: ${face.angle.pitch.toInt()}, roll: ${face.angle.roll.toInt()}}")
             face.faceAspectRatio = settings.faceAspectRatio
             val alignedFace = AlignedFace(face)
             this.faces.append(alignedFace)
@@ -74,13 +68,11 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                 }
             }
         } else {
-            Log.d(TAG, "No face detected")
             this.angleHistory.clear()
         }
         var result: FaceTrackingResult = FaceTrackingResult.Started(this.requestedBearing, expectedFaceBounds, imageCapture)
         if (!this.hasFaceBeenFixed && this.faces.hasRemovedElements && this.faces.allSatisfy { it.isFixed }) {
             this.hasFaceBeenFixed = true
-            Log.d(TAG, "Face fixed")
             return FaceTrackingResult.FaceFixed(this.requestedBearing, expectedFaceBounds, imageCapture, this.faces.last!!.face, smoothedFace!!)
         }
         if (this.hasFaceBeenFixed && this.faces.hasRemovedElements) {
@@ -139,25 +131,13 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                     smoothedFace!!
                 )
             }
-            when (result) {
-                is FaceTrackingResult.FaceCaptured -> Log.d(TAG, "Face captured")
-                is FaceTrackingResult.FaceAligned -> Log.d(TAG, "Face aligned")
-                is FaceTrackingResult.FaceMisaligned -> Log.d(TAG, "Face misaligned")
-                is FaceTrackingResult.Paused -> Log.d(TAG, "Face tracking paused")
-                else -> Log.d(TAG, "Face tracking error")
-            }
             return result
         }
         if (this.faces.isEmpty && this.hasFaceBeenFixed) {
             throw Exception("Active liveness failed")
         }
         if (!this.faces.isEmpty) {
-            Log.d(TAG, "Face found")
             return FaceTrackingResult.FaceFound(this.requestedBearing, expectedFaceBounds, imageCapture, this.faces.last!!.face, smoothedFace!!)
-        }
-        when (result) {
-            is FaceTrackingResult.Started -> Log.d(TAG, "Face tracking started")
-            else -> Log.d(TAG, "Face tracking error")
         }
         return result
     }

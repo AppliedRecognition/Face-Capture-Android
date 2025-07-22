@@ -1,6 +1,7 @@
 package com.appliedrec.verid3.facecapture.ui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Matrix
@@ -8,10 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,6 +63,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 fun FaceCaptureView(
@@ -94,11 +99,12 @@ fun FaceCaptureView(
     var serialNumber: ULong = 0u
     var startTime: Long? = null
     var cameraPermissionGranted by remember { mutableStateOf<Boolean?>(null) }
-    val countdownSeconds = session.settings.countdownSeconds
+    var countdownSeconds by remember { mutableIntStateOf(-1) }
     var secondsRemainingToStart by remember { mutableIntStateOf(countdownSeconds) }
     val requestPermissionLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
         cameraPermissionGranted = isGranted
     }
+    val faceTrackingResult by session.faceTrackingResult.collectAsState(initial = FaceTrackingResult.Created(Bearing.STRAIGHT))
     LaunchedEffect(key1 = imageFlow, key2 = cameraPermissionGranted) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -123,6 +129,11 @@ fun FaceCaptureView(
                 }
         }
     }
+    LaunchedEffect(faceTrackingResult) {
+        if (faceTrackingResult is FaceTrackingResult.Started) {
+            countdownSeconds = session.settings.countdownSeconds
+        }
+    }
     if (cameraPermissionGranted == null) {
         Text(stringResource(R.string.loading))
         return
@@ -131,13 +142,21 @@ fun FaceCaptureView(
         Text(stringResource(R.string.camera_permission_denied))
         return
     }
-    val faceTrackingResult by session.faceTrackingResult.collectAsState(initial = FaceTrackingResult.Created(Bearing.STRAIGHT))
     val angleBearingEvaluation = AngleBearingEvaluation(session.settings)
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         BoxWithConstraints(
             contentAlignment = Alignment.Center,
             modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         ) {
+            if (faceTrackingResult is FaceTrackingResult.Waiting) {
+                Column {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp)
+                    )
+                    Text(stringResource(R.string.finishing_capture))
+                }
+                return@BoxWithConstraints
+            }
             val expectedFaceBounds =
                 session.settings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
             val scaledFaceTrackingResult = faceTrackingResult.scaledToViewSize(
@@ -158,6 +177,15 @@ fun FaceCaptureView(
                 configuration.textPrompt.emit(prompt)
             }
             preview(imageFlow, maxWidth, maxHeight, scaledFaceTrackingResult, cameraTransform)
+            if (faceTrackingResult is FaceTrackingResult.Created) {
+                Column {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp)
+                    )
+                    Text(stringResource(R.string.loading))
+                }
+                return@BoxWithConstraints
+            }
             if (faceTrackingResult is FaceTrackingResult.Started && secondsRemainingToStart > 0) {
                 Text(
                     text = "%d".format(secondsRemainingToStart),

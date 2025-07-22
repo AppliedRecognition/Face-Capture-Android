@@ -1,6 +1,5 @@
 package com.appliedrec.verid3.facecapturedemo
 
-import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,16 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.appliedrec.livenessdetection.spoofdevice.SpoofDeviceDetector
-import com.appliedrec.verid3.facecapture.FaceCaptureSession
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionModuleFactories
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
-import com.appliedrec.verid3.facecapture.FaceTrackingPlugin
-import com.appliedrec.verid3.facecapture.LivenessDetectionPlugin
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
-import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
-import com.appliedrec.verid3.facedetection.mp.FaceDetection
 
 @Composable
 fun EmbeddedView(
@@ -44,15 +34,8 @@ fun EmbeddedView(
 ) {
     val resultViewModel: FaceCaptureResultViewModel = viewModel()
     val context = LocalContext.current
-    val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val livenessDetectionPlugin = LivenessDetectionPlugin(arrayOf(SpoofDeviceDetector(context)))
-    val session = FaceCaptureSession(FaceCaptureSessionSettings().apply {
-        this.faceCaptureCount = if (sharedPreferences.enableActiveLiveness) 2 else 1
-    }, FaceCaptureSessionModuleFactories(
-        { FaceDetection(context) },
-        { listOf(livenessDetectionPlugin as FaceTrackingPlugin<Any>) },
-        { emptyList() }
-    ))
+    val setup = Setup(context)
+    val session = setup.faceCaptureSession
     var isCapturingFace by remember {
         mutableStateOf(false)
     }
@@ -87,7 +70,7 @@ fun EmbeddedView(
             ) {
                 FaceCaptureView(
                     session = session,
-                    configuration = FaceCaptureViewConfiguration(context = context, useBackCamera = sharedPreferences.useBackCamera),
+                    configuration = setup.faceCaptureViewConfiguration,
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.5f)
