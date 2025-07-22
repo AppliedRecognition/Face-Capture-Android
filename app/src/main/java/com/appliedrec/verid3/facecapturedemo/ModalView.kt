@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.appliedrec.livenessdetection.spoofdevice.SpoofDeviceDetector
+import com.appliedrec.verid3.spoofdevicedetection.cloud.SpoofDeviceDetection
 import com.appliedrec.verid3.facecapture.FaceCaptureSession
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionModuleFactories
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
@@ -37,7 +37,7 @@ import com.appliedrec.verid3.facecapture.FaceTrackingPlugin
 import com.appliedrec.verid3.facecapture.LivenessDetectionPlugin
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
-import com.appliedrec.verid3.facedetection.mp.FaceDetection
+import com.appliedrec.verid3.facedetection.retinaface.FaceDetectionRetinaFace
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,15 +52,8 @@ fun ModalView(
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
-    val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val livenessDetectionPlugin = LivenessDetectionPlugin(arrayOf(SpoofDeviceDetector(context)))
-    val session = FaceCaptureSession(FaceCaptureSessionSettings().apply {
-        this.faceCaptureCount = if (sharedPreferences.enableActiveLiveness) { 2 } else { 1 }
-    }, FaceCaptureSessionModuleFactories(
-        { FaceDetection(context) },
-        { listOf(livenessDetectionPlugin as FaceTrackingPlugin<Any>) },
-        { emptyList() }
-    ))
+    val setup = Setup(context)
+    val session = setup.faceCaptureSession
     val result by session.result.collectAsState()
 
     LaunchedEffect(showBottomSheet) {
@@ -99,7 +92,7 @@ fun ModalView(
                 },
                 sheetState = sheetState
             ) {
-                FaceCaptureView(session = session, modifier = Modifier.fillMaxSize(), configuration = FaceCaptureViewConfiguration(context = context, useBackCamera = sharedPreferences.useBackCamera)) {
+                FaceCaptureView(session = session, modifier = Modifier.fillMaxSize(), configuration = setup.faceCaptureViewConfiguration) {
                     showBottomSheet = false
                     if (it is FaceCaptureSessionResult.Cancelled) {
                         return@FaceCaptureView

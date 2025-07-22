@@ -1,7 +1,7 @@
 package com.appliedrec.verid3.facecapture
 
+import android.graphics.RectF
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 import com.appliedrec.verid3.common.Bearing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModuleFactories: FaceCaptureSessionModuleFactories = FaceCaptureSessionModuleFactories.defaultInstance): SessionFaceTrackingDelegate {
+class FaceCaptureSession(
+    val settings: FaceCaptureSessionSettings,
+    sessionModuleFactories: FaceCaptureSessionModuleFactories
+): SessionFaceTrackingDelegate {
 
     val id: String = UUID.randomUUID().toString()
     val faceTrackingResult: SharedFlow<FaceTrackingResult>
@@ -30,26 +33,33 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
     val result: StateFlow<FaceCaptureSessionResult?>
         get() = _result
     var resultCallback: ((FaceCaptureSessionResult) -> Unit)? = null
-    private val _result: MutableStateFlow<FaceCaptureSessionResult?> = MutableStateFlow(null)
-    private val _faceTrackingResult: MutableSharedFlow<FaceTrackingResult> = MutableStateFlow(FaceTrackingResult.Created(Bearing.STRAIGHT))
-    private val faceTracking: SessionFaceTracking =
-        SessionFaceTracking(sessionModuleFactories.createFaceDetection(), settings)
+    private val _result: MutableStateFlow<FaceCaptureSessionResult?> =
+        MutableStateFlow(null)
+    private val _faceTrackingResult: MutableSharedFlow<FaceTrackingResult> =
+        MutableStateFlow(FaceTrackingResult.Created(Bearing.STRAIGHT))
+
     private var sessionTask: Job? = null
     private var input: FlowCollector<FaceCaptureSessionImageInput>? = null
     private val inputFlow: MutableSharedFlow<FaceCaptureSessionImageInput> = MutableSharedFlow()
-//    private var pluginFutures: List<Deferred<out Pair<String, TaskResults<out Any?>>>> = emptyList()
-    private val faceTrackingResultTransformers: List<FaceTrackingResultTransformer>
+    private val faceTrackingResultTransformers: MutableList<FaceTrackingResultTransformer> =
+        mutableListOf()
 
     init {
         if (SecurityInfo.isEmulator()) {
             throw Exception("Session cannot run in an emulator")
         }
-        this.faceTracking.delegate = this
-        this.faceTrackingResultTransformers = sessionModuleFactories.createFaceTrackingResultTransformers()
         this.sessionTask = CoroutineScope(Dispatchers.Default).launch {
+            val faceDetection = sessionModuleFactories.createFaceDetection()
+            val faceTracking = SessionFaceTracking(faceDetection, settings)
+            faceTracking.delegate = this@FaceCaptureSession
+            faceTrackingResultTransformers.clear()
+            faceTrackingResultTransformers.addAll(
+                sessionModuleFactories.createFaceTrackingResultTransformers()
+            )
             val capturedFaces = mutableListOf<CapturedFace>()
             var result: FaceCaptureSessionResult
-            val plugins: List<FaceTrackingPlugin<*>> = sessionModuleFactories.createFaceTrackingPlugins()
+            val plugins: List<FaceTrackingPlugin<*>> =
+                sessionModuleFactories.createFaceTrackingPlugins()
             try {
                 var keepCollecting = true
                 this@FaceCaptureSession.inputFlow
@@ -66,20 +76,20 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
                         }
                         faceTrackingResult.capturedFace?.let { capturedFace ->
                             capturedFaces.add(capturedFace)
-                            Log.d("Ver-ID session", "Added captured face")
                             if (capturedFaces.size >= settings.faceCaptureCount) {
-                                Log.d("Ver-ID session", "Stop collecting faces")
                                 keepCollecting = false
                                 return@collect
                             }
                         }
                     }
-                Log.d("Ver-ID session", "Stopped collecting faces")
+                _faceTrackingResult.emit(FaceTrackingResult.Waiting(
+                    Bearing.STRAIGHT,
+                    RectF(0f, 0f, 0f, 0f)
+                ))
                 if (!isActive || capturedFaces.size < settings.faceCaptureCount) {
                     finishSession()
                     return@launch
                 }
-//                val metadata = pluginFutures.associate { it.await() }
                 val metadata = plugins.associate { it.stop() }
                 if (plugins.any { it.hasException }) {
                     val exception = FaceTrackingPluginException(plugins)
@@ -92,15 +102,14 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
                     finishSession()
                     return@launch
                 }
-//                val metadata = pluginFutures.associate { it.await() }
                 val metadata = plugins.associate { it.stop() }
                 finishSession()
                 result = FaceCaptureSessionResult.Failure(capturedFaces, metadata, e)
+            } finally {
+                faceDetection.close()
             }
-            Log.d("Ver-ID session", "Will dispatch on main, current thread ${Thread.currentThread().name}")
             try {
                 withContext(Dispatchers.Main) {
-                    Log.d("Ver-ID session", "Emit session result")
                     _result.value = result
                     resultCallback?.invoke(result)
                 }
@@ -109,14 +118,12 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
             } catch (e: Exception) {
                 Log.e("Ver-ID session", "Failed to dispatch on main", e)
             }
-            Log.d("Ver-ID session", "After dispatching on main, current thread ${Thread.currentThread().name}")
         }
     }
 
     fun cancel() {
         MainScope().launch {
             if (result.value == null) {
-//                _result.emit(FaceCaptureSessionResult.Cancelled())
                 _result.value = FaceCaptureSessionResult.Cancelled()
                 resultCallback?.invoke(FaceCaptureSessionResult.Cancelled())
             }
@@ -134,16 +141,20 @@ class FaceCaptureSession(val settings: FaceCaptureSessionSettings, sessionModule
     }
 
     private suspend fun finishSession() {
-        Log.d("Ver-ID session", "Finish session")
         this.input?.let { currentCoroutineContext().cancel(null) }
         this.input = null
-//        this.pluginFutures.forEach { it.cancel() }
     }
 
     override fun transformFaceResult(faceTrackingResult: FaceTrackingResult): FaceTrackingResult {
         return if (this.faceTrackingResultTransformers.isEmpty()) {
             if (faceTrackingResult is FaceTrackingResult.FaceAligned) {
-                FaceTrackingResult.FaceCaptured(faceTrackingResult.requestedBearing, faceTrackingResult.expectedFaceBounds!!, faceTrackingResult.input!!, faceTrackingResult.face!!, faceTrackingResult.smoothedFace!!)
+                FaceTrackingResult.FaceCaptured(
+                    faceTrackingResult.requestedBearing,
+                    faceTrackingResult.expectedFaceBounds!!,
+                    faceTrackingResult.input!!,
+                    faceTrackingResult.face!!,
+                    faceTrackingResult.smoothedFace!!
+                )
             } else {
                 faceTrackingResult
             }
