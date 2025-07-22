@@ -11,7 +11,7 @@ plugins {
     signing
 }
 
-version = "1.0.2"
+version = "1.0.3"
 
 android {
     namespace = "com.appliedrec.verid3.facecapture"
@@ -25,6 +25,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+    }
+
+    publishing {
+        singleVariant("release") {}
     }
 
     buildTypes {
