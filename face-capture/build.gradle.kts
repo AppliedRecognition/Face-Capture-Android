@@ -1,15 +1,21 @@
+import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.serializationJson)
     alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.dokka)
     `maven-publish`
     signing
 }
 
+version = "1.0.2"
+
 android {
     namespace = "com.appliedrec.verid3.facecapture"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
@@ -34,8 +40,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         compose = true
@@ -75,7 +83,6 @@ dependencies {
     implementation(libs.verid.common.serialization)
     api(libs.livenessDetectionCommon)
     api(libs.kotlinx.serialization.json)
-    implementation(libs.core.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -94,7 +101,6 @@ publishing {
             }
             groupId = "com.appliedrec.verid3"
             artifactId = "face-capture"
-            version = "1.0.2"
 
             pom {
                 name.set("Face Capture")
@@ -136,4 +142,10 @@ publishing {
 signing {
     useGpgCmd()
     sign(publishing.publications["release"])
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    moduleName.set("Face capture")
+    moduleVersion.set(project.version.toString())
+    outputDirectory.set(file("../docs"))
 }
