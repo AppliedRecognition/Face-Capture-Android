@@ -30,4 +30,3 @@ dependencyResolutionManagement {
 rootProject.name = "FaceCapture"
 include(":app")
 include(":face-capture")
-include(":ver-id")
