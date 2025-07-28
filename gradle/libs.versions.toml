@@ -7,7 +7,6 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.1"
 material = "1.12.0"
-veridcommon = "2.1.0"
 lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
 cameraxVersion = "1.4.2"
@@ -15,13 +14,10 @@ kotlinCoroutines = "1.10.2"
 composeBom = "2025.07.00"
 activity = "1.10.1"
 navigationCompose = "2.9.2"
-veridfacedetectionmp = "1.0.0"
 kotlinSerializationJson = "1.9.0"
 kotlinPluginSerializationJson = "2.2.0"
 sceneview = "2.3.0"
 livenessDetectionCommon = "1.1.0"
-spoofDeviceDetection = "2.1.1"
-spoofDeviceDetectionModels = "2.1.1"
 materialIconsExtended = "1.7.8"
 accompanist = "0.36.0"
 
@@ -32,8 +28,8 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-verid-common = { group = "com.appliedrec", name = "verid3-common", version = "2.1.0" }
-verid-common-serialization = { group = "com.appliedrec", name = "verid3-serialization", version = "1.0.1" }
+verid-common = { group = "com.appliedrec", name = "verid3-common", version = "3.0.0" }
+verid-common-serialization = { group = "com.appliedrec", name = "verid3-serialization", version = "1.0.2" }
 verid-facedetection = { group = "com.appliedrec", name = "verid3-face-detection-retinaface", version = "1.0.0" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
