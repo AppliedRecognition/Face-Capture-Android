@@ -44,10 +44,7 @@ class FaceCaptureSessionTest {
         runBlocking {
             val session = FaceCaptureSession(
                 FaceCaptureSessionSettings(),
-                FaceCaptureSessionModuleFactories(
-                    { MockFaceDetection() },
-                    { emptyList() },
-                    { emptyList() })
+                { MockFaceDetection() }
             )
             val startTime = System.currentTimeMillis()
             var serialNumber: ULong = 0u

@@ -3,6 +3,7 @@ package com.appliedrec.verid3.facecapture
 import android.graphics.RectF
 import android.util.Log
 import com.appliedrec.verid3.common.Bearing
+import com.appliedrec.verid3.common.FaceDetection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,7 +25,9 @@ import java.util.UUID
 
 class FaceCaptureSession(
     val settings: FaceCaptureSessionSettings,
-    sessionModuleFactories: FaceCaptureSessionModuleFactories
+    createFaceDetection: suspend () -> FaceDetection,
+    createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<Any>> = { emptyList() },
+    createFaceTrackingResultTransformers: suspend () -> List<FaceTrackingResultTransformer> = { emptyList() }
 ): SessionFaceTrackingDelegate {
 
     val id: String = UUID.randomUUID().toString()
@@ -49,17 +52,17 @@ class FaceCaptureSession(
             throw Exception("Session cannot run in an emulator")
         }
         this.sessionTask = CoroutineScope(Dispatchers.Default).launch {
-            val faceDetection = sessionModuleFactories.createFaceDetection()
+            val faceDetection = createFaceDetection()
             val faceTracking = SessionFaceTracking(faceDetection, settings)
             faceTracking.delegate = this@FaceCaptureSession
             faceTrackingResultTransformers.clear()
             faceTrackingResultTransformers.addAll(
-                sessionModuleFactories.createFaceTrackingResultTransformers()
+                createFaceTrackingResultTransformers()
             )
             val capturedFaces = mutableListOf<CapturedFace>()
             var result: FaceCaptureSessionResult
             val plugins: List<FaceTrackingPlugin<*>> =
-                sessionModuleFactories.createFaceTrackingPlugins()
+                createFaceTrackingPlugins()
             try {
                 var keepCollecting = true
                 this@FaceCaptureSession.inputFlow
