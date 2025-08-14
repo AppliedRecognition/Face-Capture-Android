@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.lifecycle.ViewModelProvider
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureActivity
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureConfiguration
+import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewModel
 import com.appliedrec.verid3.facecapture.ui.SharedViewModelStoreOwner
 import kotlinx.coroutines.CompletableDeferred
@@ -30,6 +31,23 @@ object FaceCapture {
         launcher.launch(configuration)
 
         return deferredResult.await()
+    }
+
+    suspend fun captureFaces(
+        context: ComponentActivity,
+        configure: suspend FaceCaptureConfiguration.() -> Unit
+    ): FaceCaptureSessionResult {
+        try {
+            val configuration = FaceCaptureConfiguration(
+                settings = FaceCaptureSessionSettings(),
+                viewConfiguration = FaceCaptureViewConfiguration(context.applicationContext),
+                createFaceDetection = { throw IllegalArgumentException("Face detection not specified") }
+            )
+            configure(configuration)
+            return captureFaces(context, configuration)
+        } catch (e: Exception) {
+            return FaceCaptureSessionResult.Failure(emptyList(), emptyMap(), e)
+        }
     }
 }
 

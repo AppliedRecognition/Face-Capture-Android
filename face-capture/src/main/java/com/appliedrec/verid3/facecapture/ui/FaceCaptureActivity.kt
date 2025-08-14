@@ -30,7 +30,12 @@ open class FaceCaptureActivity : ComponentActivity() {
             finish()
             return
         }
-        session = FaceCaptureSession(configuration!!.settings, configuration!!.faceCaptureSessionModuleFactories)
+        session = FaceCaptureSession(
+            configuration!!.settings,
+            configuration!!.createFaceDetection,
+            configuration!!.createFaceTrackingPlugins,
+            configuration!!.createFaceTrackingResultTransformers
+        )
         setContent {
             FaceCaptureTheme {
                 FaceCaptureView(session = session, configuration = configuration!!.viewConfiguration) { result ->
