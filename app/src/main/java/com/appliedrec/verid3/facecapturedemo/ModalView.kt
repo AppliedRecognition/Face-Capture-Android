@@ -1,6 +1,5 @@
 package com.appliedrec.verid3.facecapturedemo
 
-import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,16 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.appliedrec.verid3.spoofdevicedetection.cloud.SpoofDeviceDetection
-import com.appliedrec.verid3.facecapture.FaceCaptureSession
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionModuleFactories
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
-import com.appliedrec.verid3.facecapture.FaceTrackingPlugin
-import com.appliedrec.verid3.facecapture.LivenessDetectionPlugin
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
-import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
-import com.appliedrec.verid3.facedetection.retinaface.FaceDetectionRetinaFace
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
