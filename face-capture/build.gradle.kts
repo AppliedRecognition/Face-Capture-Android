@@ -11,7 +11,7 @@ plugins {
     signing
 }
 
-version = "1.0.3"
+version = "2.0.0"
 
 android {
     namespace = "com.appliedrec.verid3.facecapture"
@@ -103,8 +103,8 @@ publishing {
             afterEvaluate {
                 from(components["release"])
             }
-            groupId = "com.appliedrec.verid3"
-            artifactId = "face-capture"
+            groupId = "com.appliedrec"
+            artifactId = "verid3-face-capture"
 
             pom {
                 name.set("Face Capture")
