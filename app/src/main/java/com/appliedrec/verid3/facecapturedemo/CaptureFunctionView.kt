@@ -1,6 +1,5 @@
 package com.appliedrec.verid3.facecapturedemo
 
-import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
