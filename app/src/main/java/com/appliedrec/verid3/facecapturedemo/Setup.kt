@@ -8,7 +8,7 @@ import com.appliedrec.verid3.facecapture.LivenessDetectionPlugin
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureConfiguration
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
 import com.appliedrec.verid3.facedetection.retinaface.FaceDetectionRetinaFace
-import com.appliedrec.verid3.spoofdevicedetection.local.SpoofDeviceDetection
+import com.appliedrec.verid3.spoofdevicedetection.cloud.SpoofDeviceDetection
 
 class Setup(val context: Context) {
 

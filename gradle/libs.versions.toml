@@ -1,37 +1,44 @@
 [versions]
-agp = "8.11.1"
-kotlin = "2.2.0"
-coreKtx = "1.16.0"
+agp = "8.12.0"
+kotlin = "2.2.10"
+coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.12.0"
 lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
 cameraxVersion = "1.4.2"
 kotlinCoroutines = "1.10.2"
-composeBom = "2025.07.00"
+composeBom = "2025.08.00"
 activity = "1.10.1"
 navigationCompose = "2.9.3"
 kotlinSerializationJson = "1.9.0"
-kotlinPluginSerializationJson = "2.2.0"
+kotlinPluginSerializationJson = "2.2.10"
 sceneview = "2.3.0"
-livenessDetectionCommon = "1.1.0"
 materialIconsExtended = "1.7.8"
 accompanist = "0.36.0"
+veridCommon = "3.0.0"
+veridSerialization = "1.0.2"
+faceDetectionRetinaface = "1.0.0"
+spoofDeviceDetection = "1.0.0"
+lifecycleRuntimeCompose = "2.9.2"
+vanniktech = "0.34.0"
 
 [libraries]
+verid-common = { group = "com.appliedrec", name = "verid-common", version.ref = "veridCommon" }
+verid-common-serialization = { group = "com.appliedrec", name = "verid-serialization", version.ref = "veridSerialization" }
+face-detection-retinaface = { group = "com.appliedrec", name = "face-detection-retinaface", version.ref = "faceDetectionRetinaface" }
+spoof-device-detection = { group = "com.appliedrec", name = "spoof-device-detection-cloud", version.ref = "spoofDeviceDetection" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-verid-common = { group = "com.appliedrec", name = "verid3-common", version = "3.0.0" }
-verid-common-serialization = { group = "com.appliedrec", name = "verid3-serialization", version = "1.0.2" }
-verid-facedetection = { group = "com.appliedrec", name = "verid3-face-detection-retinaface", version = "1.0.0" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose"}
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -52,18 +59,16 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-compose-material = { group = "androidx.compose.material", name = "material" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinSerializationJson" }
 sceneview = { group = "io.github.sceneview", name = "sceneview", version.ref = "sceneview" }
-livenessDetectionCommon = { group = "com.appliedrec.verid.livenessdetection", name = "common", version.ref = "livenessDetectionCommon" }
-spoofDeviceDetection = { group = "com.appliedrec", name = "spoof-device-detection", version = "1.0.0" }
 materialIconsExtended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 systemUiController = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
 pager = { group = "com.google.accompanist", name = "accompanist-pager", version.ref = "accompanist" }
-pager-indicators = { group = "com.google.accompanist", name = "accompanist-pager-indicators", version.ref = "accompanist" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 serializationJson = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinPluginSerializationJson" }
-kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version = "2.2.0" }
+kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version = "2.2.10" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
+vanniktech-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech" }
 

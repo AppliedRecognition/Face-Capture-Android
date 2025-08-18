@@ -8,110 +8,62 @@ The face capture runs on Android 8.0 (API level 26).
 
 ## Installation
 
-Please [contact Applied Recognition](mailto:support@appliedrecognition.com) to obtain credentials to access the package manager repositories.
+Add dependencies in your module's **build.gradle.kts**:
 
-1. Set the following environment variables:
-
-    ```
-    export GITHUB_USER=<user name obtained from ARC>
-    export GITHUB_TOKEN=<token obtained from ARC>
-    ```
-2. Add the following to your project's **settings.gradle.kts**:
-
-    ```kotlin
-    dependencyResolutionManagement {
-        repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-        repositories {
-            google()
-            mavenCentral()
-            maven {
-                url = uri("https://maven.pkg.github.com/AppliedRecognition/Ver-ID-3D-Android-Libraries")
-                credentials {
-                    username = settings.extra["gpr.user"] as String?
-                    password = settings.extra["gpr.token"] as String?
-                }
-            }
-        }
-    }
-    ```
-3. Add dependencies in your module's **build.gradle.kts**:
-
-    ```kotlin
-    dependencies {
-        implementation("com.appliedrec.verid3:face-capture:1.0.0")
-        implementation("com.appliedrec.verid3:face-detection-mp:1.0.0")
-        implementation("com.appliedrec.verid.livenessdetection:spoof-device-detection:1.0.1")
-        implementation("com.appliedrec.verid.livenessdetection:spoof-device-detection-models:1.0.1")
-    }
-    ```
+```kotlin
+dependencies {
+    implementation(platform("com.appliedrec:verid-bom:2025-08-00"))
+    implementation("com.appliedrec:face-capture")
+    implementation("com.appliedrec:face-detection-retinaface")
+    implementation("com.appliedrec:spoof-device-detection-cloud")
+}
+```
     
 ## Usage
 
-This example shows how to present the face capture in a modal sheet.
+Capture face using a suspending function.
 
 ```kotlin
-fun ModalView() {
-    var showBottomSheet by remember {
-        mutableStateOf(false)
-    }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val context = LocalContext.current
-    val livenessDetectionPlugin = LivenessDetectionPlugin(arrayOf(SpoofDeviceDetector(context)))
-    val session = FaceCaptureSession(
-        FaceCaptureSessionSettings(), 
-        FaceCaptureSessionModuleFactories(
-            { FaceDetection(context) },
-            { listOf(livenessDetectionPlugin as FaceTrackingPlugin<Any>) },
-            { emptyList() }
-        ))
-    val result by session.result.collectAsState()
+class MyActivity : ComponentActivity() {
 
-    LaunchedEffect(showBottomSheet) {
-        if (showBottomSheet) {
-            sheetState.expand()
-        } else {
-            sheetState.hide()
-        }
-    }
-
-    Column(
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Button(onClick = {
-            showBottomSheet = true
-        }) {
-            Text("Start capture")
-        }
-    }
-    if (showBottomSheet && result == null) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                showBottomSheet = false
-                session.cancel()
-            },
-            sheetState = sheetState
-        ) {
-            FaceCaptureView(
-                session = session, 
-                modifier = Modifier.fillMaxSize(), 
-                configuration = FaceCaptureViewConfiguration(context)
-            ) {
-                showBottomSheet = false
-                when (result) {
-                    is FaceCaptureSessionResult.Success -> {
-                        System.out.println("Session succeeded, collected ${result.capturedFaces.size} face(s)")
-                    }
-                    is FaceCaptureSessionResult.Failure -> {
-                        System.out.println("Session failed: ${result.error}")
-                    }
-                    else -> {
-                        System.out.println("Session cancelled")
-                    }
-                }
+    fun captureFace() = lifecycleScope.launch(Dispatchers.Default) {
+        val activity = this@MyActivity
+        val appContext = activity.applicationContext
+        val result = FaceCapture.captureFaces(activity) {
+            // Configure the capture
+            // Create a face detection factory function
+            createFaceDetection = {
+                // In this example we'll use RetinaFace face detection
+                FaceDetectionRetinaFace.create(appContext) 
+            }
+            createFaceTrackingPlugins = {
+                listOf(
+                    // Add liveness detection plugin using spoof device detection
+                    LivenessDetectionPlugin(
+                        spoofDetectors = arrayOf(SpoofDeviceDetection(appContext))
+                    ) as FaceTrackingPlugin<Any>
+                )
             }
         }
-    } else if (showBottomSheet) {
-        showBottomSheet = false
+        // Check the face capture result
+        when (result) {
+            // Face capture succeeded
+            is FaceCaptureSessionResult.Success -> {
+                val capturedFace = result.capturedFaces.first()
+                withContext(Dispatchers.Main) {
+                    // Update UI
+                }
+            }
+            // Face capture failed
+            is FaceCaptureSessionResult.Failure -> {
+                val error = result.error
+                withContext(Dispatchers.Main) {
+                    // Update UI
+                }
+            }
+            // User cancelled the capture
+            is FaceCaptureSessionResult.Cancelled -> {}
+        }
     }
 }
 ```
