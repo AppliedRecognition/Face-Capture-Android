@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.serializationJson)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.dokka)
-    `maven-publish`
+    alias(libs.plugins.vanniktech.publish)
     signing
 }
 
@@ -25,10 +25,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-    }
-
-    publishing {
-        singleVariant("release") {}
     }
 
     buildTypes {
@@ -64,10 +60,11 @@ android {
 
 dependencies {
 
+    api(libs.verid.common)
+    implementation(libs.verid.common.serialization)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    api(libs.verid.common)
     implementation(libs.kotlin.coroutines.core)
     implementation(libs.kotlin.coroutines.android)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -83,9 +80,7 @@ dependencies {
     implementation(libs.camera.view)
     implementation(libs.sceneview)
     implementation(libs.pager)
-    implementation(libs.pager.indicators)
-    implementation(libs.verid.common.serialization)
-    api(libs.livenessDetectionCommon)
+    implementation(libs.androidx.lifecycle.compose)
     api(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
@@ -97,55 +92,37 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("release") {
-            afterEvaluate {
-                from(components["release"])
+mavenPublishing {
+    coordinates("com.appliedrec", "verid-face-capture")
+    pom {
+        name.set("Face Capture")
+        description.set("Captures live face")
+        url.set("https://github.com/AppliedRecognition/Face-Capture-Android")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
-            groupId = "com.appliedrec"
-            artifactId = "verid3-face-capture"
-
-            pom {
-                name.set("Face Capture")
-                description.set("Captures live face")
-                url.set("https://github.com/AppliedRecognition/Face-Capture-Android")
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/AppliedRecognition/Face-Capture-Android.git")
-                    developerConnection.set("scm:git:ssh://github.com/AppliedRecognition/Face-Capture-Android.git")
-                    url.set("https://github.com/jakubdolejs/Face-Capture-Android")
-                }
-                developers {
-                    developer {
-                        id.set("appliedrecognition")
-                        name.set("Applied Recognition Corp.")
-                        email.set("support@appliedrecognition.com")
-                    }
-                }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/AppliedRecognition/Face-Capture-Android.git")
+            developerConnection.set("scm:git:ssh://github.com/AppliedRecognition/Face-Capture-Android.git")
+            url.set("https://github.com/jakubdolejs/Face-Capture-Android")
+        }
+        developers {
+            developer {
+                id.set("appliedrecognition")
+                name.set("Applied Recognition Corp.")
+                email.set("support@appliedrecognition.com")
             }
         }
     }
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/AppliedRecognition/Ver-ID-3D-Android-Libraries")
-            credentials {
-                username = project.findProperty("gpr.user") as String?
-                password = project.findProperty("gpr.token") as String?
-            }
-        }
-    }
+    publishToMavenCentral(automaticRelease = true)
 }
 
 signing {
     useGpgCmd()
-    sign(publishing.publications["release"])
+    sign(publishing.publications)
 }
 
 tasks.withType<DokkaTask>().configureEach {
