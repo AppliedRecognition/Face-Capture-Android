@@ -1,4 +1,4 @@
-import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.DokkaTaskPartial
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -125,8 +125,13 @@ signing {
     sign(publishing.publications)
 }
 
-tasks.withType<DokkaTask>().configureEach {
+dokka {
+    dokkaPublications.html {
+        outputDirectory.set(rootProject.file("docs"))
+    }
+}
+
+tasks.withType<DokkaTaskPartial>().configureEach {
     moduleName.set("Face capture")
     moduleVersion.set(project.version.toString())
-    outputDirectory.set(file("../docs"))
 }
