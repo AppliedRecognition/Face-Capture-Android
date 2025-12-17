@@ -41,7 +41,7 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
         if (imageCapture.time < settings.countdownSeconds * 1000) {
             return FaceTrackingResult.Started(this.requestedBearing, expectedFaceBounds, imageCapture)
         }
-        val face = this.faceDetection.detectFacesInImage(imageCapture.image, 1).firstOrNull()
+        val face = this.faceDetection.detectFacesInImage(imageCapture.image, 1).firstOrNull()?.normalizingBounds()
         if (face != null) {
             face.faceAspectRatio = settings.faceAspectRatio
             val alignedFace = AlignedFace(face)

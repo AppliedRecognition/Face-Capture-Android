@@ -1,4 +1,4 @@
-import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.DokkaTaskPartial
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -11,7 +11,7 @@ plugins {
     signing
 }
 
-version = "2.0.1"
+version = "2.0.2"
 
 android {
     namespace = "com.appliedrec.verid3.facecapture"
@@ -125,8 +125,13 @@ signing {
     sign(publishing.publications)
 }
 
-tasks.withType<DokkaTask>().configureEach {
+dokka {
+    dokkaPublications.html {
+        outputDirectory.set(rootProject.file("docs"))
+    }
+}
+
+tasks.withType<DokkaTaskPartial>().configureEach {
     moduleName.set("Face capture")
     moduleVersion.set(project.version.toString())
-    outputDirectory.set(file("../docs"))
 }
