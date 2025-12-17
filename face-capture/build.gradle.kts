@@ -11,7 +11,7 @@ plugins {
     signing
 }
 
-version = "2.0.1"
+version = "2.0.2"
 
 android {
     namespace = "com.appliedrec.verid3.facecapture"
