@@ -12,7 +12,7 @@ Add dependencies in your module's **build.gradle.kts**:
 
 ```kotlin
 dependencies {
-    implementation(platform("com.appliedrec:verid-bom:2025-08-00"))
+    implementation(platform("com.appliedrec:verid-bom:3001.3.0"))
     implementation("com.appliedrec:face-capture")
     implementation("com.appliedrec:face-detection-retinaface")
     implementation("com.appliedrec:spoof-device-detection-cloud")
