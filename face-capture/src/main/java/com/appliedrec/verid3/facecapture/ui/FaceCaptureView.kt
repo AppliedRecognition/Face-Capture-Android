@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
 import com.appliedrec.verid3.facecapture.FaceTrackingResult
 import com.appliedrec.verid3.facecapture.R
 import com.appliedrec.verid3.facecapture.SecurityInfo
+import com.appliedrec.verid3.facecapture.SessionFaceTracking
 import com.appliedrec.verid3.facecapture.scaledToViewSize
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
@@ -157,11 +159,12 @@ fun FaceCaptureView(
                 }
                 return@BoxWithConstraints
             }
+            val density = LocalDensity.current.density
             val expectedFaceBounds =
-                session.settings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
+                session.settings.expectedFaceBoundsInSize(maxWidth.toFloat(density), maxHeight.toFloat(density))
             val scaledFaceTrackingResult = faceTrackingResult.scaledToViewSize(
-                maxWidth.toFloat(),
-                maxHeight.toFloat(),
+                maxWidth.toFloat(density),
+                maxHeight.toFloat(density),
                 expectedFaceBounds,
                 !configuration.useBackCamera
             )
@@ -236,19 +239,36 @@ private fun createCameraTransform(
         targetValue = targetTranslationY.floatValue,
         label = "translationY"
     )
-
+    val density = LocalDensity.current.density
     return {
         if (maxWidth != 0.dp && maxHeight != 0.dp && scaledFaceTrackingResult.expectedFaceBounds != null && scaledFaceTrackingResult.smoothedFace != null) {
-            val faceBounds = sessionSettings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
-            val matrix = Matrix().apply {
-                setRectToRect(
-                    scaledFaceTrackingResult.smoothedFace.bounds,
-                    faceBounds,
-                    Matrix.ScaleToFit.FILL
-                )
-            }
+            val faceBounds = sessionSettings.expectedFaceBoundsInSize(maxWidth.toFloat(density), maxHeight.toFloat(density))
             val matrixValues = FloatArray(9)
-            matrix.getValues(matrixValues)
+            if (scaledFaceTrackingResult is FaceTrackingResult.Started) {
+                val viewWidth = maxWidth.toFloat(density)
+                val viewHeight = maxHeight.toFloat(density)
+                val scale = faceBounds.width() / scaledFaceTrackingResult.smoothedFace.bounds.width()
+                if (scale < 1f) {
+                    matrixValues[Matrix.MSCALE_X] = scale
+                    matrixValues[Matrix.MSCALE_Y] = scale
+                    matrixValues[Matrix.MTRANS_X] = (viewWidth - viewWidth * scale) * 0.5f
+                    matrixValues[Matrix.MTRANS_Y] = (viewHeight - viewHeight * scale) * 0.5f
+                } else {
+                    matrixValues[Matrix.MSCALE_X] = 1f
+                    matrixValues[Matrix.MSCALE_Y] = 1f
+                    matrixValues[Matrix.MTRANS_X] = 0f
+                    matrixValues[Matrix.MTRANS_Y] = 0f
+                }
+            } else {
+                val matrix = Matrix().apply {
+                    setRectToRect(
+                        scaledFaceTrackingResult.smoothedFace.bounds,
+                        faceBounds,
+                        Matrix.ScaleToFit.FILL
+                    )
+                }
+                matrix.getValues(matrixValues)
+            }
             transformOrigin = TransformOrigin(0f, 0f)
             targetScaleX.floatValue = matrixValues[Matrix.MSCALE_X]
             targetScaleY.floatValue = matrixValues[Matrix.MSCALE_Y]
@@ -267,6 +287,6 @@ private fun createCameraTransform(
     }
 }
 
-fun Dp.toFloat(): Float {
-    return Resources.getSystem().displayMetrics.density * value
+fun Dp.toFloat(density: Float): Float {
+    return density * value
 }
