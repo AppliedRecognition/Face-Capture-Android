@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -96,8 +95,8 @@ fun FaceCaptureView(
     val imageFlow = remember {
         MutableSharedFlow<IImage>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     }
-    var serialNumber: ULong = 0u
-    var startTime: Long? = null
+    var serialNumber: ULong = remember(session) { 0uL }
+    var startTime: Long? = remember(session) { null }
     var cameraPermissionGranted by remember { mutableStateOf<Boolean?>(null) }
     var countdownSeconds by remember { mutableIntStateOf(-1) }
     var secondsRemainingToStart by remember { mutableIntStateOf(countdownSeconds) }
@@ -115,7 +114,7 @@ fun FaceCaptureView(
                 if (startTime == null) {
                     startTime = now
                 }
-                val elapsed = now - startTime!!
+                val elapsed = now - startTime
                 session.submitImageInput(FaceCaptureSessionImageInput(serialNumber++, elapsed, image))
             }.launchIn(this)
         }
@@ -144,6 +143,7 @@ fun FaceCaptureView(
     }
     val angleBearingEvaluation = AngleBearingEvaluation(session.settings)
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
         BoxWithConstraints(
             contentAlignment = Alignment.Center,
             modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -238,37 +238,27 @@ private fun createCameraTransform(
     )
 
     return {
-        when (scaledFaceTrackingResult) {
-            is FaceTrackingResult.FaceAligned, is FaceTrackingResult.FaceFixed, is FaceTrackingResult.FaceMisaligned, is FaceTrackingResult.FaceCaptured -> {
-                if (maxWidth != 0.dp && maxHeight != 0.dp && scaledFaceTrackingResult.expectedFaceBounds != null && scaledFaceTrackingResult.smoothedFace != null) {
-                    val faceBounds = sessionSettings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
-                    val matrix = Matrix().apply {
-                        setRectToRect(
-                            scaledFaceTrackingResult.smoothedFace.bounds,
-                            faceBounds,
-                            Matrix.ScaleToFit.FILL
-                        )
-                    }
-                    val matrixValues = FloatArray(9)
-                    matrix.getValues(matrixValues)
-                    transformOrigin = TransformOrigin(0f, 0f)
-                    targetScaleX.floatValue = matrixValues[Matrix.MSCALE_X]
-                    targetScaleY.floatValue = matrixValues[Matrix.MSCALE_Y]
-                    targetTranslationX.floatValue = matrixValues[Matrix.MTRANS_X]
-                    targetTranslationY.floatValue = matrixValues[Matrix.MTRANS_Y]
-                } else {
-                    targetScaleX.floatValue = 1f
-                    targetScaleY.floatValue = 1f
-                    targetTranslationX.floatValue = 0f
-                    targetTranslationY.floatValue = 0f
-                }
+        if (maxWidth != 0.dp && maxHeight != 0.dp && scaledFaceTrackingResult.expectedFaceBounds != null && scaledFaceTrackingResult.smoothedFace != null) {
+            val faceBounds = sessionSettings.expectedFaceBoundsInSize(maxWidth.toFloat(), maxHeight.toFloat())
+            val matrix = Matrix().apply {
+                setRectToRect(
+                    scaledFaceTrackingResult.smoothedFace.bounds,
+                    faceBounds,
+                    Matrix.ScaleToFit.FILL
+                )
             }
-            else -> {
-                targetScaleX.floatValue = 1f
-                targetScaleY.floatValue = 1f
-                targetTranslationX.floatValue = 0f
-                targetTranslationY.floatValue = 0f
-            }
+            val matrixValues = FloatArray(9)
+            matrix.getValues(matrixValues)
+            transformOrigin = TransformOrigin(0f, 0f)
+            targetScaleX.floatValue = matrixValues[Matrix.MSCALE_X]
+            targetScaleY.floatValue = matrixValues[Matrix.MSCALE_Y]
+            targetTranslationX.floatValue = matrixValues[Matrix.MTRANS_X]
+            targetTranslationY.floatValue = matrixValues[Matrix.MTRANS_Y]
+        } else {
+            targetScaleX.floatValue = 1f
+            targetScaleY.floatValue = 1f
+            targetTranslationX.floatValue = 0f
+            targetTranslationY.floatValue = 0f
         }
         scaleX = animatedScaleX
         scaleY = animatedScaleY

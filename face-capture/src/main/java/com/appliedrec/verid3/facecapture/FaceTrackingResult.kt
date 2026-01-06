@@ -8,7 +8,7 @@ import com.appliedrec.verid3.common.Face
 sealed class FaceTrackingResult(val requestedBearing: Bearing, val expectedFaceBounds: RectF? = null, val input: FaceCaptureSessionImageInput? = null, val face: Face? = null, val smoothedFace: Face? = null) {
     class Created(requestedBearing: Bearing): FaceTrackingResult(requestedBearing)
     class Waiting(requestedBearing: Bearing, expectedFaceBounds: RectF): FaceTrackingResult(requestedBearing, expectedFaceBounds)
-    class Started(requestedBearing: Bearing, expectedFaceBounds: RectF, input: FaceCaptureSessionImageInput): FaceTrackingResult(requestedBearing, expectedFaceBounds, input)
+    class Started(requestedBearing: Bearing, expectedFaceBounds: RectF, input: FaceCaptureSessionImageInput, smoothedFace: Face? = null): FaceTrackingResult(requestedBearing, expectedFaceBounds, input, smoothedFace = smoothedFace)
     class Paused(requestedBearing: Bearing, expectedFaceBounds: RectF, input: FaceCaptureSessionImageInput): FaceTrackingResult(requestedBearing, expectedFaceBounds, input)
     class FaceFound(requestedBearing: Bearing, expectedFaceBounds: RectF, input: FaceCaptureSessionImageInput, face: Face, smoothedFace: Face): FaceTrackingResult(requestedBearing, expectedFaceBounds, input, face, smoothedFace)
     class FaceFixed(requestedBearing: Bearing, expectedFaceBounds: RectF, input: FaceCaptureSessionImageInput, face: Face, smoothedFace: Face): FaceTrackingResult(requestedBearing, expectedFaceBounds, input, face, smoothedFace)
@@ -91,7 +91,7 @@ fun FaceTrackingResult.scaledToViewSize(width: Float, height: Float, expectedFac
     return when (this) {
         is FaceTrackingResult.Created -> FaceTrackingResult.Created(requestedBearing)
         is FaceTrackingResult.Waiting -> FaceTrackingResult.Waiting(requestedBearing, expectedFaceBounds)
-        is FaceTrackingResult.Started -> FaceTrackingResult.Started(requestedBearing, expectedFaceBounds, input!!)
+        is FaceTrackingResult.Started -> FaceTrackingResult.Started(requestedBearing, expectedFaceBounds, input!!, scaledSmoothedFace)
         is FaceTrackingResult.Paused -> FaceTrackingResult.Paused(requestedBearing, expectedFaceBounds, input!!)
         is FaceTrackingResult.FaceFound -> FaceTrackingResult.FaceFound(requestedBearing, expectedFaceBounds, input!!, scaledFace!!, scaledSmoothedFace!!)
         is FaceTrackingResult.FaceFixed -> FaceTrackingResult.FaceFixed(requestedBearing, expectedFaceBounds, input!!, scaledFace!!, scaledSmoothedFace!!)
