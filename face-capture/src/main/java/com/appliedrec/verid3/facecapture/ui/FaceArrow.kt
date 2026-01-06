@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.appliedrec.verid3.facecapture.AngleBearingEvaluation
 import com.appliedrec.verid3.facecapture.FaceTrackingResult
@@ -42,7 +43,7 @@ fun FaceArrow(faceTrackingResult: FaceTrackingResult, angleBearingEvaluation: An
             moveTo(arrowTip.x, arrowTip.y)
             lineTo(arrowStart.x, arrowStart.y)
         }
-        val strokeWidth: Float = 10.dp.toFloat()
+        val strokeWidth: Float = 10.dp.toFloat(LocalDensity.current.density)
         val scaleX = if (isMirrored) -1f else 1f
         Canvas(modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scaleX)) {
             for (i in generateSequence(strokeWidth) { it + 2f }.takeWhile { it < strokeWidth + 10f }) {

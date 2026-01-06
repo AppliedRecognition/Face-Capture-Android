@@ -38,25 +38,39 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
         val imageSize = SizeFCompat(imageCapture.image.width.toFloat(), imageCapture.image.height.toFloat())
         val expectedFaceBounds = this.settings.expectedFaceBoundsInSize(imageSize.width, imageSize.height)
 //        val expectedFaceBounds = this.settings.expectedFaceBoundsInSize(imageCapture.viewSize.width.toFloat(), imageCapture.viewSize.height.toFloat())
-        if (imageCapture.time < settings.countdownSeconds * 1000) {
-            return FaceTrackingResult.Started(this.requestedBearing, expectedFaceBounds, imageCapture)
-        }
         val face = this.faceDetection.detectFacesInImage(imageCapture.image, 1).firstOrNull()?.normalizingBounds()
         if (face != null) {
             face.faceAspectRatio = settings.faceAspectRatio
             val alignedFace = AlignedFace(face)
             this.faces.append(alignedFace)
             val smoothedFace = this.smoothedFace!!
-            val angleMatchesBearing = this.angleBearingEvaluation.angleMatchesBearing(smoothedFace.angle, this.requestedBearing)
+            if (imageCapture.time < settings.countdownSeconds * 1000) {
+                return FaceTrackingResult.Started(
+                    this.requestedBearing,
+                    expectedFaceBounds,
+                    imageCapture,
+                    smoothedFace
+                )
+            }
+            val angleMatchesBearing = this.angleBearingEvaluation.angleMatchesBearing(
+                smoothedFace.angle,
+                this.requestedBearing
+            )
             this.faces.last!!.isAligned = angleMatchesBearing
-            this.faces.last!!.isFixed = this.isFaceWithBoundsFixedInImageSize(smoothedFace.bounds, expectedFaceBounds)
+            this.faces.last!!.isFixed =
+                this.isFaceWithBoundsFixedInImageSize(smoothedFace.bounds, expectedFaceBounds)
             if (this.settings.faceCaptureCount > 1) {
                 this.angleHistory.add(smoothedFace.angle)
                 this.previousBearing?.let { previousBearing ->
                     if (previousBearing != this.requestedBearing) {
                         var movedOpposite = false
                         for (angle in this.angleHistory) {
-                            if (!this.angleBearingEvaluation.isAngleBetweenBearings(angle, previousBearing, this.requestedBearing)) {
+                            if (!this.angleBearingEvaluation.isAngleBetweenBearings(
+                                    angle,
+                                    previousBearing,
+                                    this.requestedBearing
+                                )
+                            ) {
                                 movedOpposite = true
                                 break
                             }
@@ -67,6 +81,12 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                     }
                 }
             }
+        } else if (imageCapture.time < settings.countdownSeconds * 1000) {
+            return FaceTrackingResult.Started(
+                this.requestedBearing,
+                expectedFaceBounds,
+                imageCapture
+            )
         } else {
             this.angleHistory.clear()
         }
