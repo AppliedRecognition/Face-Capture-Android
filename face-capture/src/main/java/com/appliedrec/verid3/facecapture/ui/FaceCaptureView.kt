@@ -3,11 +3,14 @@ package com.appliedrec.verid3.facecapture.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.content.res.Resources
 import android.graphics.Matrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector4D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.TwoWayConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -20,10 +23,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +56,7 @@ import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
 import com.appliedrec.verid3.facecapture.FaceTrackingResult
 import com.appliedrec.verid3.facecapture.R
 import com.appliedrec.verid3.facecapture.SecurityInfo
-import com.appliedrec.verid3.facecapture.SessionFaceTracking
+import com.appliedrec.verid3.facecapture.copyWithExpectedBounds
 import com.appliedrec.verid3.facecapture.scaledToViewSize
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
@@ -63,6 +67,7 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlin.math.abs
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -131,7 +136,7 @@ fun FaceCaptureView(
         }
     }
     LaunchedEffect(faceTrackingResult) {
-        if (faceTrackingResult is FaceTrackingResult.Started) {
+        if (faceTrackingResult is FaceTrackingResult.Launched) {
             countdownSeconds = session.settings.countdownSeconds
         }
     }
@@ -189,7 +194,7 @@ fun FaceCaptureView(
                 }
                 return@BoxWithConstraints
             }
-            if (faceTrackingResult is FaceTrackingResult.Started && secondsRemainingToStart > 0) {
+            if (faceTrackingResult is FaceTrackingResult.Starting && secondsRemainingToStart > 0) {
                 Text(
                     text = "%d".format(secondsRemainingToStart),
                     modifier = Modifier.align(Alignment.Center),
@@ -221,71 +226,138 @@ private fun createCameraTransform(
     maxWidth: Dp,
     maxHeight: Dp
 ): GraphicsLayerScope.() -> Unit {
-    val targetScaleX = remember { mutableFloatStateOf(1f) }
-    val targetScaleY = remember { mutableFloatStateOf(1f) }
-    val targetTranslationX = remember { mutableFloatStateOf(0f) }
-    val targetTranslationY = remember { mutableFloatStateOf(0f) }
-    val animatedScaleX by animateFloatAsState(
-        targetValue = targetScaleX.floatValue,
-        label = "scaleX")
-    val animatedScaleY by animateFloatAsState(
-        targetValue = targetScaleY.floatValue,
-        label = "scaleY")
-    val animatedTranslationX by animateFloatAsState(
-        targetValue = targetTranslationX.floatValue,
-        label = "translationX"
-    )
-    val animatedTranslationY by animateFloatAsState(
-        targetValue = targetTranslationY.floatValue,
-        label = "translationY"
-    )
     val density = LocalDensity.current.density
-    return {
-        if (maxWidth != 0.dp && maxHeight != 0.dp && scaledFaceTrackingResult.expectedFaceBounds != null && scaledFaceTrackingResult.smoothedFace != null) {
-            val faceBounds = sessionSettings.expectedFaceBoundsInSize(maxWidth.toFloat(density), maxHeight.toFloat(density))
-            val matrixValues = FloatArray(9)
-            if (scaledFaceTrackingResult is FaceTrackingResult.Started) {
-                val viewWidth = maxWidth.toFloat(density)
-                val viewHeight = maxHeight.toFloat(density)
-                val scale = faceBounds.width() / scaledFaceTrackingResult.smoothedFace.bounds.width()
-                if (scale < 1f) {
-                    matrixValues[Matrix.MSCALE_X] = scale
-                    matrixValues[Matrix.MSCALE_Y] = scale
-                    matrixValues[Matrix.MTRANS_X] = (viewWidth - viewWidth * scale) * 0.5f
-                    matrixValues[Matrix.MTRANS_Y] = (viewHeight - viewHeight * scale) * 0.5f
-                } else {
-                    matrixValues[Matrix.MSCALE_X] = 1f
-                    matrixValues[Matrix.MSCALE_Y] = 1f
-                    matrixValues[Matrix.MTRANS_X] = 0f
-                    matrixValues[Matrix.MTRANS_Y] = 0f
-                }
+    val viewWidthPx = maxWidth.toFloat(density)
+    val viewHeightPx = maxHeight.toFloat(density)
+
+    // Pure target, recomputed on recomposition only
+    val target by remember(
+        scaledFaceTrackingResult,
+        sessionSettings,
+        viewWidthPx,
+        viewHeightPx
+    ) {
+        derivedStateOf {
+            if (maxWidth == 0.dp || maxHeight == 0.dp) {
+                CameraTransformTarget()
             } else {
-                val matrix = Matrix().apply {
-                    setRectToRect(
-                        scaledFaceTrackingResult.smoothedFace.bounds,
-                        faceBounds,
-                        Matrix.ScaleToFit.FILL
-                    )
+                val expected = sessionSettings.expectedFaceBoundsInSize(viewWidthPx, viewHeightPx)
+                val withExpected = when {
+                    scaledFaceTrackingResult.expectedFaceBounds == null ->
+                        scaledFaceTrackingResult.copyWithExpectedBounds(expected)
+                    else -> scaledFaceTrackingResult
                 }
-                matrix.getValues(matrixValues)
+                computeCameraTransformTarget(withExpected, viewWidthPx, viewHeightPx)
             }
-            transformOrigin = TransformOrigin(0f, 0f)
-            targetScaleX.floatValue = matrixValues[Matrix.MSCALE_X]
-            targetScaleY.floatValue = matrixValues[Matrix.MSCALE_Y]
-            targetTranslationX.floatValue = matrixValues[Matrix.MTRANS_X]
-            targetTranslationY.floatValue = matrixValues[Matrix.MTRANS_Y]
-        } else {
-            targetScaleX.floatValue = 1f
-            targetScaleY.floatValue = 1f
-            targetTranslationX.floatValue = 0f
-            targetTranslationY.floatValue = 0f
         }
-        scaleX = animatedScaleX
-        scaleY = animatedScaleY
-        translationX = animatedTranslationX
-        translationY = animatedTranslationY
+    }
+
+    val transformAnimatable = remember { Animatable(CameraTransformTarget(), CameraTransformTargetVectorConverter) }
+
+    val springSpec = remember {
+        spring<CameraTransformTarget>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    }
+
+    // Deadband to avoid buzzing from tiny measurement noise
+    val epsScale = 0.001f
+    val epsTrans = 0.5f
+
+    LaunchedEffect(target) {
+        val current = transformAnimatable.value
+
+        val close = current.scaleX.isCloseTo(target.scaleX, epsScale) &&
+                    current.scaleY.isCloseTo(target.scaleY, epsScale) &&
+                    current.translationX.isCloseTo(target.translationX, epsTrans) &&
+                    current.translationY.isCloseTo(target.translationY, epsTrans)
+
+        if (close) {
+            transformAnimatable.snapTo(target)
+        } else {
+            transformAnimatable.animateTo(target, springSpec)
+        }
+    }
+
+    // Layer lambda: reads only, no state writes
+    return {
+        transformOrigin = TransformOrigin(0f, 0f)
+        this.scaleX = transformAnimatable.value.scaleX
+        this.scaleY = transformAnimatable.value.scaleY
+        this.translationX = transformAnimatable.value.translationX
+        this.translationY = transformAnimatable.value.translationY
     }
 }
+
+@Immutable
+private data class CameraTransformTarget(
+    val scaleX: Float = 1f,
+    val scaleY: Float = 1f,
+    val translationX: Float = 0f,
+    val translationY: Float = 0f
+)
+
+private val CameraTransformTargetVectorConverter = TwoWayConverter<CameraTransformTarget, AnimationVector4D>(
+    convertToVector = { t ->
+        AnimationVector4D(t.scaleX, t.scaleY, t.translationX, t.translationY)
+    },
+    convertFromVector = { v ->
+        CameraTransformTarget(
+            scaleX = v.v1,
+            scaleY = v.v2,
+            translationX = v.v3,
+            translationY = v.v4
+        )
+    }
+)
+
+private fun computeCameraTransformTarget(
+    scaledFaceTrackingResult: FaceTrackingResult,
+    viewWidthPx: Float,
+    viewHeightPx: Float
+): CameraTransformTarget {
+    val smoothedFace = scaledFaceTrackingResult.smoothedFace ?: return CameraTransformTarget()
+    val expected = scaledFaceTrackingResult.expectedFaceBounds ?: return CameraTransformTarget()
+
+    return if ((scaledFaceTrackingResult is FaceTrackingResult.Starting)
+        || (scaledFaceTrackingResult is FaceTrackingResult.Started)
+        || (scaledFaceTrackingResult is FaceTrackingResult.FaceFound)) {
+        val scale = expected.width() / smoothedFace.bounds.width()
+        val faceFitsInView = smoothedFace.bounds.left > 0
+                && smoothedFace.bounds.right < viewWidthPx
+                && smoothedFace.bounds.top > 0
+                && smoothedFace.bounds.bottom < viewHeightPx
+        if (scale < 1f && faceFitsInView) {
+            CameraTransformTarget(
+                scaleX = scale,
+                scaleY = scale,
+                translationX = (viewWidthPx - viewWidthPx * scale) * 0.5f,
+                translationY = (viewHeightPx - viewHeightPx * scale) * 0.5f
+            )
+        } else {
+            CameraTransformTarget()
+        }
+    } else {
+        val matrixValues = FloatArray(9)
+        val matrix = Matrix().apply {
+            setRectToRect(
+                smoothedFace.bounds,
+                expected,
+                Matrix.ScaleToFit.FILL
+            )
+        }
+        matrix.getValues(matrixValues)
+        CameraTransformTarget(
+            scaleX = matrixValues[Matrix.MSCALE_X],
+            scaleY = matrixValues[Matrix.MSCALE_Y],
+            translationX = matrixValues[Matrix.MTRANS_X],
+            translationY = matrixValues[Matrix.MTRANS_Y]
+        )
+    }
+}
+
+private fun Float.isCloseTo(other: Float, epsilon: Float): Boolean = abs(this - other) <= epsilon
 
 fun Dp.toFloat(density: Float): Float {
     return density * value
