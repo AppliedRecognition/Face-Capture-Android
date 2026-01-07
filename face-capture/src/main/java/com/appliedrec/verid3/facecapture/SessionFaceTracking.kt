@@ -2,6 +2,7 @@ package com.appliedrec.verid3.facecapture
 
 import android.graphics.PointF
 import android.graphics.RectF
+import android.util.Size
 import androidx.core.util.SizeFCompat
 import com.appliedrec.verid3.common.Bearing
 import com.appliedrec.verid3.common.EulerAngle
@@ -21,9 +22,8 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
     private val angleBearingEvaluation: AngleBearingEvaluation = AngleBearingEvaluation(this.settings)
     private val faces: TimeConstrainedCircularBuffer<AlignedFace> = TimeConstrainedCircularBuffer(500)
     private var hasBeenAligned: Boolean = false
-    var isFaceWithBoundsFixedInImageSize: (RectF, RectF) -> Boolean = { bounds, expectedBounds ->
-        val maxRect = RectF(expectedBounds)
-        maxRect.inset(0f-expectedBounds.width()*0.3f, 0f-expectedBounds.height()*0.3f)
+    var isFaceWithBoundsFixedInImageSize: (RectF, RectF, Size) -> Boolean = { bounds, expectedBounds, imageSize ->
+        val maxRect = RectF(0f, 0f, imageSize.width.toFloat(), imageSize.height.toFloat())
         val minRect = RectF(expectedBounds)
         minRect.inset(expectedBounds.width()*0.4f, expectedBounds.height()*0.4f)
         bounds.contains(minRect) && maxRect.contains(bounds)
@@ -33,11 +33,16 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
     var hasFaceBeenFixed: Boolean = false
     var delegate: SessionFaceTrackingDelegate? = null
     var smoothingBufferSize: Int = 10
+    var launched: Boolean = false
+    var started: Boolean = false
 
     suspend fun trackFace(imageCapture: FaceCaptureSessionImageInput): FaceTrackingResult {
         val imageSize = SizeFCompat(imageCapture.image.width.toFloat(), imageCapture.image.height.toFloat())
         val expectedFaceBounds = this.settings.expectedFaceBoundsInSize(imageSize.width, imageSize.height)
-//        val expectedFaceBounds = this.settings.expectedFaceBoundsInSize(imageCapture.viewSize.width.toFloat(), imageCapture.viewSize.height.toFloat())
+        if (!launched) {
+            launched = true
+            return FaceTrackingResult.Launched(this.requestedBearing, expectedFaceBounds)
+        }
         val face = this.faceDetection.detectFacesInImage(imageCapture.image, 1).firstOrNull()?.normalizingBounds()
         if (face != null) {
             face.faceAspectRatio = settings.faceAspectRatio
@@ -45,6 +50,14 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
             this.faces.append(alignedFace)
             val smoothedFace = this.smoothedFace!!
             if (imageCapture.time < settings.countdownSeconds * 1000) {
+                return FaceTrackingResult.Starting(
+                    this.requestedBearing,
+                    expectedFaceBounds,
+                    imageCapture,
+                    smoothedFace
+                )
+            } else if (!started) {
+                started = true
                 return FaceTrackingResult.Started(
                     this.requestedBearing,
                     expectedFaceBounds,
@@ -58,7 +71,7 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
             )
             this.faces.last!!.isAligned = angleMatchesBearing
             this.faces.last!!.isFixed =
-                this.isFaceWithBoundsFixedInImageSize(smoothedFace.bounds, expectedFaceBounds)
+                this.isFaceWithBoundsFixedInImageSize(smoothedFace.bounds, expectedFaceBounds, Size(imageCapture.image.width, imageCapture.image.height))
             if (this.settings.faceCaptureCount > 1) {
                 this.angleHistory.add(smoothedFace.angle)
                 this.previousBearing?.let { previousBearing ->
@@ -82,7 +95,7 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                 }
             }
         } else if (imageCapture.time < settings.countdownSeconds * 1000) {
-            return FaceTrackingResult.Started(
+            return FaceTrackingResult.Starting(
                 this.requestedBearing,
                 expectedFaceBounds,
                 imageCapture
@@ -90,10 +103,24 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
         } else {
             this.angleHistory.clear()
         }
-        var result: FaceTrackingResult = FaceTrackingResult.Started(this.requestedBearing, expectedFaceBounds, imageCapture)
+        var result: FaceTrackingResult = FaceTrackingResult.Started(
+            this.requestedBearing,
+            expectedFaceBounds,
+            imageCapture
+        )
+        if (!started) {
+            started = true
+            return result
+        }
         if (!this.hasFaceBeenFixed && this.faces.hasRemovedElements && this.faces.allSatisfy { it.isFixed }) {
             this.hasFaceBeenFixed = true
-            return FaceTrackingResult.FaceFixed(this.requestedBearing, expectedFaceBounds, imageCapture, this.faces.last!!.face, smoothedFace!!)
+            return FaceTrackingResult.FaceFixed(
+                this.requestedBearing,
+                expectedFaceBounds,
+                imageCapture,
+                this.faces.last!!.face,
+                smoothedFace!!
+            )
         }
         if (this.hasFaceBeenFixed && this.faces.hasRemovedElements) {
             if (this.faces.allSatisfy { it.isAligned }) {
@@ -170,6 +197,8 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
         this.alignTime = null
         this.requestedBearing = Bearing.STRAIGHT
         this.previousBearing = null
+        this.launched = false
+        this.started = false
     }
 
     private val smoothedFace: Face?
