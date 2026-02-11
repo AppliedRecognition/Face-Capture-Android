@@ -9,6 +9,9 @@ import com.appliedrec.verid3.facecapture.ui.FaceCaptureConfiguration
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureViewConfiguration
 import com.appliedrec.verid3.facedetection.retinaface.FaceDetectionRetinaFace
 import com.appliedrec.verid3.spoofdevicedetection.cloud.SpoofDeviceDetection
+import com.appliedrec.videorecordingplugin.VideoRecordingPlugin
+import com.appliedrec.videorecordingplugin.VideoRecordingSettings
+import java.io.File
 
 class Setup(val context: Context) {
 
@@ -29,13 +32,16 @@ class Setup(val context: Context) {
         FaceDetectionRetinaFace.create(context)
     }
 
-    val createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<Any>> = {
+    val createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<*>> = {
         val livenessDetectionPlugin = LivenessDetectionPlugin(arrayOf(
             SpoofDeviceDetection(
                 context
             )
         ))
-        listOf(livenessDetectionPlugin as FaceTrackingPlugin<Any>)
+        val videoRecordingPlugin = VideoRecordingPlugin(context, File(context.filesDir, "face-capture-demo.mp4"),
+            VideoRecordingSettings(collectFrameMetadata = true)
+        )
+        listOf(livenessDetectionPlugin, videoRecordingPlugin)
     }
 
     val faceCaptureSessionSettings: FaceCaptureSessionSettings
