@@ -61,7 +61,7 @@ android {
 dependencies {
 
     api(libs.verid.common)
-    implementation(libs.verid.common.serialization)
+    api(libs.verid.common.serialization)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
