@@ -46,6 +46,14 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+    packaging {
+        jniLibs {
+            pickFirsts.add("lib/arm64-v8a/libonnxruntime.so")
+            pickFirsts.add("lib/x86_64/libonnxruntime.so")
+            pickFirsts.add("lib/armeabi-v7a/libonnxruntime.so")
+            pickFirsts.add("lib/x86/libonnxruntime.so")
+        }
+    }
 }
 
 dependencies {
@@ -67,6 +75,7 @@ dependencies {
     implementation(libs.spoof.device.detection)
     implementation(libs.materialIconsExtended)
     implementation(libs.systemUiController)
+    implementation(libs.video.recording.plugin)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

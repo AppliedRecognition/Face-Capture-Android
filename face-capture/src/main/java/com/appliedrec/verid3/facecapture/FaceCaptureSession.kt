@@ -4,14 +4,12 @@ import android.graphics.RectF
 import android.util.Log
 import com.appliedrec.verid3.common.Bearing
 import com.appliedrec.verid3.common.FaceDetection
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,13 +18,15 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 class FaceCaptureSession(
     val settings: FaceCaptureSessionSettings,
     createFaceDetection: suspend () -> FaceDetection,
-    createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<Any>> = { emptyList() },
+    createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<*>> = { emptyList() },
     createFaceTrackingResultTransformers: suspend () -> List<FaceTrackingResultTransformer> = { emptyList() }
 ): SessionFaceTrackingDelegate {
 
@@ -42,10 +42,10 @@ class FaceCaptureSession(
         MutableStateFlow(FaceTrackingResult.Created(Bearing.STRAIGHT))
 
     private var sessionTask: Job? = null
-    private var input: FlowCollector<FaceCaptureSessionImageInput>? = null
     private val inputFlow: MutableSharedFlow<FaceCaptureSessionImageInput> = MutableSharedFlow()
     private val faceTrackingResultTransformers: MutableList<FaceTrackingResultTransformer> =
         mutableListOf()
+    private val cancellationRequested = AtomicBoolean(false)
 
     init {
         if (SecurityInfo.isEmulator()) {
@@ -60,9 +60,10 @@ class FaceCaptureSession(
                 createFaceTrackingResultTransformers()
             )
             val capturedFaces = mutableListOf<CapturedFace>()
-            var result: FaceCaptureSessionResult
+            var result: FaceCaptureSessionResult? = null
             val plugins: List<FaceTrackingPlugin<*>> =
                 createFaceTrackingPlugins()
+            var error: Throwable? = null
             try {
                 var keepCollecting = true
                 this@FaceCaptureSession.inputFlow
@@ -85,36 +86,44 @@ class FaceCaptureSession(
                             }
                         }
                     }
-                _faceTrackingResult.emit(FaceTrackingResult.Waiting(
-                    Bearing.STRAIGHT,
-                    RectF(0f, 0f, 0f, 0f)
-                ))
-                if (!isActive || capturedFaces.size < settings.faceCaptureCount) {
-                    finishSession()
-                    return@launch
-                }
-                val metadata = plugins.associate { it.stop() }
-                if (plugins.any { it.hasException }) {
-                    val exception = FaceTrackingPluginException(plugins)
-                    result = FaceCaptureSessionResult.Failure(capturedFaces, metadata, exception)
-                } else {
-                    result = FaceCaptureSessionResult.Success(capturedFaces, metadata)
+            } catch (e: CancellationException) {
+                if (!cancellationRequested.get()) {
+                    error = e
                 }
             } catch (e: Exception) {
-                if (!isActive) {
-                    finishSession()
-                    return@launch
-                }
-                val metadata = plugins.associate { it.stop() }
-                finishSession()
-                result = FaceCaptureSessionResult.Failure(capturedFaces, metadata, e)
+                error = e
             } finally {
+                val metadata = withContext(NonCancellable) {
+                    try {
+                        _faceTrackingResult.emit(
+                            FaceTrackingResult.Waiting(
+                                Bearing.STRAIGHT,
+                                RectF(0f, 0f, 0f, 0f)
+                            )
+                        )
+                    } catch (e: Exception) {
+                        // Ignore dispatch failures while shutting down
+                    }
+                    plugins.associate { it.stop() }
+                }
                 faceDetection.close()
+                result = when {
+                    cancellationRequested.get() -> FaceCaptureSessionResult.Cancelled()
+                    error != null -> FaceCaptureSessionResult.Failure(capturedFaces, metadata, error!!)
+                    plugins.any { it.hasException } -> {
+                        val exception = FaceTrackingPluginException(plugins)
+                        FaceCaptureSessionResult.Failure(capturedFaces, metadata, exception)
+                    }
+                    capturedFaces.size < settings.faceCaptureCount -> FaceCaptureSessionResult.Cancelled()
+                    else -> FaceCaptureSessionResult.Success(capturedFaces, metadata)
+                }
             }
             try {
                 withContext(Dispatchers.Main) {
-                    _result.value = result
-                    resultCallback?.invoke(result)
+                    if (_result.value == null) {
+                        _result.value = result
+                        resultCallback?.invoke(result!!)
+                    }
                 }
                 this@FaceCaptureSession.sessionTask?.cancel()
                 this@FaceCaptureSession.sessionTask = null
@@ -125,14 +134,9 @@ class FaceCaptureSession(
     }
 
     fun cancel() {
+        cancellationRequested.set(true)
         MainScope().launch {
-            if (result.value == null) {
-                _result.value = FaceCaptureSessionResult.Cancelled()
-                resultCallback?.invoke(FaceCaptureSessionResult.Cancelled())
-            }
-        }
-        CoroutineScope(Dispatchers.Default).launch {
-            finishSession()
+            sessionTask?.cancel()
         }
     }
 
@@ -141,11 +145,6 @@ class FaceCaptureSession(
             return
         }
         this.inputFlow.emit(imageInput)
-    }
-
-    private suspend fun finishSession() {
-        this.input?.let { currentCoroutineContext().cancel(null) }
-        this.input = null
     }
 
     override fun transformFaceResult(faceTrackingResult: FaceTrackingResult): FaceTrackingResult {

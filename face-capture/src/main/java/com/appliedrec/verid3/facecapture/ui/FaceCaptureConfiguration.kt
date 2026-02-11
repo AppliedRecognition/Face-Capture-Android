@@ -9,6 +9,6 @@ data class FaceCaptureConfiguration(
     var settings: FaceCaptureSessionSettings,
     var viewConfiguration: FaceCaptureViewConfiguration,
     var createFaceDetection: suspend () -> FaceDetection,
-    var createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<Any>> = { emptyList() },
+    var createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<*>> = { emptyList() },
     var createFaceTrackingResultTransformers: suspend () -> List<FaceTrackingResultTransformer> = { emptyList() }
 )

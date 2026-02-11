@@ -25,6 +25,7 @@ faceDetectionRetinaface = "1.0.2"
 spoofDeviceDetection = "1.0.1"
 lifecycleRuntimeCompose = "2.9.2"
 vanniktech = "0.34.0"
+videoRecordingPlugin = "1.0.0"
 
 [libraries]
 verid-common = { group = "com.appliedrec", name = "verid-common", version.ref = "veridCommon" }
@@ -62,6 +63,7 @@ sceneview = { group = "io.github.sceneview", name = "sceneview", version.ref = "
 materialIconsExtended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 systemUiController = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
 pager = { group = "com.google.accompanist", name = "accompanist-pager", version.ref = "accompanist" }
+video-recording-plugin = { group = "com.appliedrec", name = "video-recording-plugin", version.ref = "videoRecordingPlugin" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
