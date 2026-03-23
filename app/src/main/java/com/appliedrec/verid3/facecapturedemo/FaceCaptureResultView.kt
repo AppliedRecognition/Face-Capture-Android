@@ -43,8 +43,8 @@ import com.appliedrec.verid3.common.serialization.toBitmap
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
 import com.appliedrec.verid3.facecapture.toExportJson
 import com.appliedrec.videorecordingplugin.VideoRecordingResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -199,7 +199,7 @@ private fun onShareResultClicked(
 }
 
 private fun createShareZipUri(
-    context: android.content.Context,
+    context: Context,
     json: String,
     faceImages: List<Bitmap>,
     videoFilePath: String?
