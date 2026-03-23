@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,28 +21,29 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.appliedrec.verid3.facecapture.FaceCapture
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun CaptureFunctionView(
     title: String,
     description: String,
-    navigationController: NavController
+    navigationController: NavController,
+    resultViewModel: FaceCaptureResultViewModel,
+    viewModel: CaptureFunctionViewModel = viewModel()
 ) {
-    val context = LocalActivity.current as? ComponentActivity ?: return
-    val resultViewModel: FaceCaptureResultViewModel = viewModel()
-    val setup = Setup(context)
+    val activity = LocalActivity.current as? ComponentActivity ?: return
     val scope = rememberCoroutineScope()
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+
+    LaunchedEffect(Unit) {
+        viewModel.captureResult.collect { result ->
+            val resultId = resultViewModel.saveResult(result)
+            navigationController.navigate("sessionResult/$resultId")
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
         AppBarWithTips(title, navigationController)
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(description, color = MaterialTheme.colorScheme.onBackground)
             HorizontalDivider(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
@@ -50,17 +52,16 @@ fun CaptureFunctionView(
             )
             Button(onClick = {
                 scope.launch {
-                    val result = FaceCapture.captureFaces(context, setup.faceCaptureConfiguration)
-                    if (result is FaceCaptureSessionResult.Cancelled) {
-                        return@launch
-                    }
-                    val resultId = resultViewModel.saveResult(result)
-                    withContext(Dispatchers.Main) {
-                        navigationController.navigate("sessionResult/${resultId}")
-                    }
+                    val result = FaceCapture.captureFaces(activity, viewModel.faceCaptureConfiguration)
+                    viewModel.onCaptureComplete(result)
                 }
             }) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color.White, modifier = Modifier.padding(end = 8.dp))
+                Icon(
+                    Icons.Filled.CameraAlt,
+                    contentDescription = "Camera",
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
                 Text("Start capture", color = Color.White)
             }
         }

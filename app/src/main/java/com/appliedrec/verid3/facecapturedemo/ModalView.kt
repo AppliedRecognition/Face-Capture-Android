@@ -18,16 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,65 +30,56 @@ import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
 fun ModalView(
     title: String,
     description: String,
-    navigationController: NavController
+    navigationController: NavController,
+    resultViewModel: FaceCaptureResultViewModel,
+    viewModel: ModalViewModel = viewModel()
 ) {
-    val resultViewModel: FaceCaptureResultViewModel = viewModel()
-    var showBottomSheet by remember {
-        mutableStateOf(false)
-    }
+    val showBottomSheet by viewModel.showBottomSheet.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val context = LocalContext.current
-    val setup = Setup(context)
-    val session = setup.faceCaptureSession
-    val result by session.result.collectAsState()
 
     LaunchedEffect(showBottomSheet) {
-        if (showBottomSheet) {
-            sheetState.expand()
-        } else {
-            sheetState.hide()
+        if (showBottomSheet) sheetState.expand() else sheetState.hide()
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.captureResult.collect { result ->
+            val resultId = resultViewModel.saveResult(result)
+            navigationController.navigate("sessionResult/$resultId")
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         AppBarWithTips(title, navigationController)
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(description, color = MaterialTheme.colorScheme.onBackground)
             HorizontalDivider(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                 thickness = 1.dp,
                 color = Color.Gray
             )
-            Button(onClick = {
-                showBottomSheet = true
-            }) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color.White, modifier = Modifier.padding(end = 8.dp))
+            Button(onClick = { viewModel.startCapture() }) {
+                Icon(
+                    Icons.Filled.CameraAlt,
+                    contentDescription = "Camera",
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
                 Text("Start capture", color = Color.White)
             }
         }
-        if (showBottomSheet && result == null) {
+        if (showBottomSheet) {
             ModalBottomSheet(
-                onDismissRequest = {
-                    showBottomSheet = false
-                    session.cancel()
-                },
+                onDismissRequest = { viewModel.dismissSheet() },
                 sheetState = sheetState
             ) {
-                FaceCaptureView(session = session, modifier = Modifier.fillMaxSize(), configuration = setup.faceCaptureViewConfiguration) {
-                    showBottomSheet = false
-                    if (it is FaceCaptureSessionResult.Cancelled) {
-                        return@FaceCaptureView
-                    }
-                    val resultId = resultViewModel.saveResult(it)
-                    navigationController.navigate("sessionResult/${resultId}")
+                FaceCaptureView(
+                    session = viewModel.session,
+                    modifier = Modifier.fillMaxSize(),
+                    configuration = viewModel.faceCaptureViewConfiguration
+                ) { result ->
+                    viewModel.onCaptureResult(result)
                 }
             }
-        } else if (showBottomSheet) {
-            showBottomSheet = false
         }
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,23 +39,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             FaceCaptureAppTheme {
+                // Scoped to the Activity's ViewModelStore — shared across all screens
+                val resultViewModel: FaceCaptureResultViewModel = viewModel()
                 val navController = rememberNavController()
                 NavHost(navController = navController, startDestination = "presentationSelection") {
                     composable("presentationSelection") {
                         PresentationSelection(navController)
                     }
                     composable("modalPresentation") {
-                        ModalView(Demo.MODAL.title, Demo.MODAL.description, navController)
+                        ModalView(Demo.MODAL.title, Demo.MODAL.description, navController, resultViewModel)
                     }
                     composable("embeddedPresentation") {
-                        EmbeddedView(Demo.EMBEDDED.title, Demo.MODAL.description, navController)
+                        EmbeddedView(Demo.EMBEDDED.title, Demo.MODAL.description, navController, resultViewModel)
                     }
                     composable("captureFunctionPresentation") {
-                        CaptureFunctionView(Demo.CAPTURE_FUNCTION.title, Demo.CAPTURE_FUNCTION.description, navController)
+                        CaptureFunctionView(Demo.CAPTURE_FUNCTION.title, Demo.CAPTURE_FUNCTION.description, navController, resultViewModel)
                     }
                     composable("sessionResult/{resultId}") { backStackEntry ->
                         backStackEntry.arguments?.getString("resultId")?.let { resultId ->
-                            FaceCaptureResultView(resultId)
+                            FaceCaptureResultView(resultId, resultViewModel)
                         }
                     }
                     composable("tips") {
@@ -75,14 +78,9 @@ fun PresentationSelection(
     modifier: Modifier = Modifier
 ) {
     val demos = arrayOf(Demo.MODAL, Demo.EMBEDDED, Demo.CAPTURE_FUNCTION)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         AppBar("Face capture") {
-            IconButton(onClick = {
-                navController.navigate("settings")
-            }) {
+            IconButton(onClick = { navController.navigate("settings") }) {
                 Icon(Icons.Default.Settings, contentDescription = "Settings")
             }
         }
@@ -101,7 +99,6 @@ fun PresentationSelection(
                 }
             }
         }
-
     }
 }
 
@@ -115,9 +112,7 @@ fun DemoSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 16.dp),
-        onClick = {
-            onNavigate(demo)
-        }
+        onClick = { onNavigate(demo) }
     ) {
         Column(
             modifier = Modifier
@@ -144,7 +139,6 @@ fun DemoSection(
             )
             Text(demo.description)
         }
-
     }
 }
 
