@@ -23,19 +23,43 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
-class FaceCaptureSession(
-    val settings: FaceCaptureSessionSettings,
+interface FaceCaptureSession {
+    val settings: FaceCaptureSessionSettings
+    val faceTrackingResult: SharedFlow<FaceTrackingResult>
+    val result: StateFlow<FaceCaptureSessionResult?>
+    fun start()
+    fun cancel()
+}
+
+@Suppress("FunctionName")
+fun FaceCaptureSession(
+    settings: FaceCaptureSessionSettings,
     createFaceDetection: suspend () -> FaceDetection,
     createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<*>> = { emptyList() },
     createFaceTrackingResultTransformers: suspend () -> List<FaceTrackingResultTransformer> = { emptyList() }
-): SessionFaceTrackingDelegate {
+): FaceCaptureSession = FaceCaptureSessionImpl(
+    settings,
+    createFaceDetection,
+    createFaceTrackingPlugins,
+    createFaceTrackingResultTransformers
+)
 
-    val id: String = UUID.randomUUID().toString()
-    val faceTrackingResult: SharedFlow<FaceTrackingResult>
+internal suspend fun FaceCaptureSession.submitImageInput(imageInput: FaceCaptureSessionImageInput) {
+    (this as? FaceCaptureSessionImpl)?.submitImageInput(imageInput)
+}
+
+internal class FaceCaptureSessionImpl(
+    override val settings: FaceCaptureSessionSettings,
+    private val createFaceDetection: suspend () -> FaceDetection,
+    private val createFaceTrackingPlugins: suspend () -> List<FaceTrackingPlugin<*>> = { emptyList() },
+    private val createFaceTrackingResultTransformers: suspend () -> List<FaceTrackingResultTransformer> = { emptyList() }
+) : FaceCaptureSession {
+
+    private val id: String = UUID.randomUUID().toString()
+    override val faceTrackingResult: SharedFlow<FaceTrackingResult>
         get() = _faceTrackingResult
-    val result: StateFlow<FaceCaptureSessionResult?>
+    override val result: StateFlow<FaceCaptureSessionResult?>
         get() = _result
-    var resultCallback: ((FaceCaptureSessionResult) -> Unit)? = null
     private val _result: MutableStateFlow<FaceCaptureSessionResult?> =
         MutableStateFlow(null)
     private val _faceTrackingResult: MutableSharedFlow<FaceTrackingResult> =
@@ -43,22 +67,22 @@ class FaceCaptureSession(
 
     private var sessionTask: Job? = null
     private val inputFlow: MutableSharedFlow<FaceCaptureSessionImageInput> = MutableSharedFlow()
-    private val faceTrackingResultTransformers: MutableList<FaceTrackingResultTransformer> =
-        mutableListOf()
     private val cancellationRequested = AtomicBoolean(false)
+    private val started = AtomicBoolean(false)
 
     init {
         if (SecurityInfo.isEmulator()) {
             throw Exception("Session cannot run in an emulator")
         }
+    }
+
+    override fun start() {
+        if (!started.compareAndSet(false, true)) return
         this.sessionTask = CoroutineScope(Dispatchers.Default).launch {
             val faceDetection = createFaceDetection()
+            val transformers = createFaceTrackingResultTransformers()
             val faceTracking = SessionFaceTracking(faceDetection, settings)
-            faceTracking.delegate = this@FaceCaptureSession
-            faceTrackingResultTransformers.clear()
-            faceTrackingResultTransformers.addAll(
-                createFaceTrackingResultTransformers()
-            )
+            faceTracking.delegate = DefaultFaceTrackingResultTransformDelegate(transformers)
             val capturedFaces = mutableListOf<CapturedFace>()
             var result: FaceCaptureSessionResult? = null
             val plugins: List<FaceTrackingPlugin<*>> =
@@ -66,7 +90,7 @@ class FaceCaptureSession(
             var error: Throwable? = null
             try {
                 var keepCollecting = true
-                this@FaceCaptureSession.inputFlow
+                this@FaceCaptureSessionImpl.inputFlow
                     .takeWhile { isActive && keepCollecting }
                     .buffer(1, BufferOverflow.DROP_OLDEST)
                     .collect { imageInput ->
@@ -122,48 +146,27 @@ class FaceCaptureSession(
                 withContext(Dispatchers.Main) {
                     if (_result.value == null) {
                         _result.value = result
-                        resultCallback?.invoke(result!!)
                     }
                 }
-                this@FaceCaptureSession.sessionTask?.cancel()
-                this@FaceCaptureSession.sessionTask = null
+                this@FaceCaptureSessionImpl.sessionTask?.cancel()
+                this@FaceCaptureSessionImpl.sessionTask = null
             } catch (e: Exception) {
                 Log.e("Ver-ID session", "Failed to dispatch on main", e)
             }
         }
     }
 
-    fun cancel() {
+    override fun cancel() {
         cancellationRequested.set(true)
         MainScope().launch {
             sessionTask?.cancel()
         }
     }
 
-    suspend fun submitImageInput(imageInput: FaceCaptureSessionImageInput) {
+    internal suspend fun submitImageInput(imageInput: FaceCaptureSessionImageInput) {
         if (sessionTask == null || sessionTask?.isActive != true) {
             return
         }
         this.inputFlow.emit(imageInput)
-    }
-
-    override fun transformFaceResult(faceTrackingResult: FaceTrackingResult): FaceTrackingResult {
-        return if (this.faceTrackingResultTransformers.isEmpty()) {
-            if (faceTrackingResult is FaceTrackingResult.FaceAligned) {
-                FaceTrackingResult.FaceCaptured(
-                    faceTrackingResult.requestedBearing,
-                    faceTrackingResult.expectedFaceBounds!!,
-                    faceTrackingResult.input!!,
-                    faceTrackingResult.face!!,
-                    faceTrackingResult.smoothedFace!!
-                )
-            } else {
-                faceTrackingResult
-            }
-        } else {
-            this.faceTrackingResultTransformers.fold(faceTrackingResult) { result, transformer ->
-                transformer.transformFaceResult(result)
-            }
-        }
     }
 }
