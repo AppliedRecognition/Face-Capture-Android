@@ -176,7 +176,7 @@ class FaceCaptureSessionResultExportTest {
 
     @Test
     fun cancelledResultExportsStableShape() {
-        val result = FaceCaptureSessionResult.Cancelled()
+        val result = FaceCaptureSessionResult.Cancelled
 
         val root = Json.parseToJsonElement(result.toExportJson()).jsonObject
 

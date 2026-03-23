@@ -89,7 +89,7 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                             }
                         }
                         if (movedOpposite) {
-                            TODO("Throw error")
+                            error("Face moved in the opposite direction")
                         }
                     }
                 }

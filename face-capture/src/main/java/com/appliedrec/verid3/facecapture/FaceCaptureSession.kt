@@ -8,7 +8,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -132,13 +131,13 @@ internal class FaceCaptureSessionImpl(
                 }
                 faceDetection.close()
                 result = when {
-                    cancellationRequested.get() -> FaceCaptureSessionResult.Cancelled()
+                    cancellationRequested.get() -> FaceCaptureSessionResult.Cancelled
                     error != null -> FaceCaptureSessionResult.Failure(capturedFaces, metadata, error!!)
                     plugins.any { it.hasException } -> {
                         val exception = FaceTrackingPluginException(plugins)
                         FaceCaptureSessionResult.Failure(capturedFaces, metadata, exception)
                     }
-                    capturedFaces.size < settings.faceCaptureCount -> FaceCaptureSessionResult.Cancelled()
+                    capturedFaces.size < settings.faceCaptureCount -> FaceCaptureSessionResult.Cancelled
                     else -> FaceCaptureSessionResult.Success(capturedFaces, metadata)
                 }
             }
@@ -158,9 +157,7 @@ internal class FaceCaptureSessionImpl(
 
     override fun cancel() {
         cancellationRequested.set(true)
-        MainScope().launch {
-            sessionTask?.cancel()
-        }
+        sessionTask?.cancel()
     }
 
     internal suspend fun submitImageInput(imageInput: FaceCaptureSessionImageInput) {
