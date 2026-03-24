@@ -23,6 +23,7 @@ abstract class FaceTrackingPlugin<T> {
     private var isActive = true
     private val lock = ReentrantLock()
     private val _results = mutableListOf<FaceTrackingPluginResult<T>>()
+    private var _stoppedTaskResults: TaskResults<T>? = null
     val results: List<FaceTrackingPluginResult<T>> get() = lock.withLock { Collections.unmodifiableList(_results) }
     val hasException: Boolean get() = results.any { it.result.isFailure }
 
@@ -64,6 +65,11 @@ abstract class FaceTrackingPlugin<T> {
     }
 
     suspend fun stop(): Pair<String, TaskResults<T>> {
+        lock.withLock {
+            _stoppedTaskResults?.let {
+                return Pair(name, it)
+            }
+        }
         isActive = false
         faceTrackingResultFlow.emit(FaceTrackingResult.Waiting(Bearing.STRAIGHT,
             RectF(0f, 0f, 0f, 0f)
@@ -76,9 +82,35 @@ abstract class FaceTrackingPlugin<T> {
             }
         }
         task = null
-        val results = lock.withLock { this._results.toList() }
+        val finalResult: FaceTrackingPluginResult<T>? = try {
+            createFinalResult()?.let { value ->
+                val lastResult = lock.withLock { _results.lastOrNull() }
+                FaceTrackingPluginResult(
+                    lastResult?.serialNumber ?: 0uL,
+                    lastResult?.time ?: System.currentTimeMillis(),
+                    Result.success(value)
+                )
+            }
+        } catch (e: Exception) {
+            val lastResult = lock.withLock { _results.lastOrNull() }
+            FaceTrackingPluginResult(
+                lastResult?.serialNumber ?: 0uL,
+                lastResult?.time ?: System.currentTimeMillis(),
+                Result.failure(e)
+            )
+        }
+        finalResult?.let {
+            lock.withLock {
+                _results.add(it)
+            }
+        }
+        val results = lock.withLock { _results.toList() }
         val summary = createSummaryFromResults(results)
-        return Pair(name, TaskResults(summary, results))
+        val taskResults = TaskResults(summary, results)
+        lock.withLock {
+            _stoppedTaskResults = taskResults
+        }
+        return Pair(name, taskResults)
     }
 
     suspend fun submitFaceTrackingResult(faceTrackingResult: FaceTrackingResult) {
@@ -88,4 +120,5 @@ abstract class FaceTrackingPlugin<T> {
 
     protected abstract suspend fun processFaceTrackingResult(faceTrackingResult: FaceTrackingResult): T?
     protected abstract suspend fun createSummaryFromResults(results: List<FaceTrackingPluginResult<T>>): String
+    protected open suspend fun createFinalResult(): T? = null
 }

@@ -1,11 +1,7 @@
 package com.appliedrec.verid3.facecapture.ui
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.graphics.Matrix
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector4D
 import androidx.compose.animation.core.Spring
@@ -45,12 +41,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.appliedrec.verid3.common.Bearing
 import com.appliedrec.verid3.common.IImage
 import com.appliedrec.verid3.facecapture.AngleBearingEvaluation
 import com.appliedrec.verid3.facecapture.FaceCaptureSession
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionImageInput
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
 import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
 import com.appliedrec.verid3.facecapture.FaceTrackingResult
@@ -98,31 +92,28 @@ fun FaceCaptureView(
         Text("Rooted device detected")
         return
     }
-    session.resultCallback = onResult
+    LaunchedEffect(session) {
+        session.start()
+        session.result.collect { sessionResult ->
+            sessionResult?.let(onResult)
+        }
+    }
     val imageFlow = remember {
         MutableSharedFlow<IImage>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     }
-    var serialNumber: ULong = remember(session) { 0uL }
-    var startTime: Long? = remember(session) { null }
+    val viewState = remember(session) { FaceCaptureViewState() }
     var cameraPermissionGranted by remember { mutableStateOf<Boolean?>(null) }
     var countdownSeconds by remember { mutableIntStateOf(-1) }
     var secondsRemainingToStart by remember { mutableIntStateOf(countdownSeconds) }
-    val requestPermissionLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
-        cameraPermissionGranted = isGranted
-    }
     val faceTrackingResult by session.faceTrackingResult.collectAsState(initial = FaceTrackingResult.Created(Bearing.STRAIGHT))
+    CameraPermissionEffect(
+        onGranted = { cameraPermissionGranted = true },
+        onDenied = { cameraPermissionGranted = false }
+    )
     LaunchedEffect(key1 = imageFlow, key2 = cameraPermissionGranted) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-        } else {
-            cameraPermissionGranted = true
+        if (cameraPermissionGranted == true) {
             imageFlow.onEach { image ->
-                val now = System.currentTimeMillis()
-                if (startTime == null) {
-                    startTime = now
-                }
-                val elapsed = now - startTime
-                session.submitImageInput(FaceCaptureSessionImageInput(serialNumber++, elapsed, image))
+                viewState.processImage(image, session)
             }.launchIn(this)
         }
     }

@@ -13,36 +13,35 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.appliedrec.verid3.facecapture.FaceCaptureSessionResult
 import com.appliedrec.verid3.facecapture.ui.FaceCaptureView
 
 @Composable
 fun EmbeddedView(
     title: String,
     description: String,
-    navigationController: NavController
+    navigationController: NavController,
+    resultViewModel: FaceCaptureResultViewModel,
+    viewModel: EmbeddedViewModel = viewModel()
 ) {
-    val resultViewModel: FaceCaptureResultViewModel = viewModel()
-    val context = LocalContext.current
-    val setup = Setup(context)
-    val session = setup.faceCaptureSession
-    var isCapturingFace by remember {
-        mutableStateOf(false)
+    val isCapturing by viewModel.isCapturing.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.captureResult.collect { result ->
+            val resultId = resultViewModel.saveResult(result)
+            navigationController.navigate("sessionResult/$resultId")
+        }
     }
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (!isCapturingFace) {
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (!isCapturing) {
             AppBarWithTips(title, navigationController)
             Column(
                 modifier = Modifier
@@ -55,10 +54,13 @@ fun EmbeddedView(
                     thickness = 1.dp,
                     color = Color.Gray
                 )
-                Button(onClick = {
-                    isCapturingFace = true
-                }) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color.White, modifier = Modifier.padding(end = 8.dp))
+                Button(onClick = { viewModel.startCapture() }) {
+                    Icon(
+                        Icons.Filled.CameraAlt,
+                        contentDescription = "Camera",
+                        tint = Color.White,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                     Text("Start capture", color = Color.White)
                 }
             }
@@ -69,29 +71,26 @@ fun EmbeddedView(
                     .padding(horizontal = 16.dp)
             ) {
                 FaceCaptureView(
-                    session = session,
-                    configuration = setup.faceCaptureViewConfiguration,
+                    session = viewModel.session,
+                    configuration = viewModel.faceCaptureViewConfiguration,
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.5f)
-                ) {
-                    isCapturingFace = false
-                    if (it is FaceCaptureSessionResult.Cancelled) {
-                        return@FaceCaptureView
-                    }
-                    val resultId = resultViewModel.saveResult(it)
-                    navigationController.navigate("sessionResult/${resultId}")
+                ) { result ->
+                    viewModel.onCaptureResult(result)
                 }
                 HorizontalDivider(
                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                     thickness = 1.dp,
                     color = Color.Gray
                 )
-                Button(onClick = {
-                    isCapturingFace = false
-                    session.cancel()
-                }) {
-                    Icon(Icons.Filled.Cancel, contentDescription = "Cancel", tint = Color.White, modifier = Modifier.padding(end = 8.dp))
+                Button(onClick = { viewModel.cancelCapture() }) {
+                    Icon(
+                        Icons.Filled.Cancel,
+                        contentDescription = "Cancel",
+                        tint = Color.White,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                     Text("Cancel", color = Color.White)
                 }
             }

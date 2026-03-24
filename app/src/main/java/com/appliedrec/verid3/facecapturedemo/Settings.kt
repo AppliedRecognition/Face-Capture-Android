@@ -1,5 +1,6 @@
 package com.appliedrec.verid3.facecapturedemo
 
+import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.foundation.layout.Column
@@ -10,48 +11,44 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsViewModel(context: Context) : ViewModel() {
-    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    var useBackCamera = mutableStateOf(sharedPreferences.useBackCamera)
-        private set
+    private val sharedPreferences: SharedPreferences =
+        application.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    private val _useBackCamera = MutableStateFlow(sharedPreferences.useBackCamera)
+    val useBackCamera: StateFlow<Boolean> = _useBackCamera.asStateFlow()
+
+    private val _enableActiveLiveness = MutableStateFlow(sharedPreferences.enableActiveLiveness)
+    val enableActiveLiveness: StateFlow<Boolean> = _enableActiveLiveness.asStateFlow()
 
     fun setUseBackCamera(value: Boolean) {
-        useBackCamera.value = value
+        _useBackCamera.value = value
         sharedPreferences.useBackCamera = value
     }
 
-    var enableActiveLiveness = mutableStateOf(sharedPreferences.enableActiveLiveness)
-        private set
-
     fun setEnableActiveLiveness(value: Boolean) {
-        enableActiveLiveness.value = value
+        _enableActiveLiveness.value = value
         sharedPreferences.enableActiveLiveness = value
     }
 }
 
-class SettingsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(context) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
-
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(
-    LocalContext.current))) {
+fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
+    val useBackCamera by viewModel.useBackCamera.collectAsState()
+    val enableActiveLiveness by viewModel.enableActiveLiveness.collectAsState()
+
     Column(modifier = Modifier.fillMaxWidth()) {
         AppBar(title = "Settings")
         Column(modifier = Modifier.padding(16.dp)) {
@@ -62,10 +59,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
                 Text("Use back camera")
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
-                    checked = viewModel.useBackCamera.value,
-                    onCheckedChange = {
-                        viewModel.setUseBackCamera(it)
-                    }
+                    checked = useBackCamera,
+                    onCheckedChange = { viewModel.setUseBackCamera(it) }
                 )
             }
             Row(
@@ -75,16 +70,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
                 Text("Enable active liveness")
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
-                    checked = viewModel.enableActiveLiveness.value,
-                    onCheckedChange = {
-                        viewModel.setEnableActiveLiveness(it)
-                    })
+                    checked = enableActiveLiveness,
+                    onCheckedChange = { viewModel.setEnableActiveLiveness(it) }
+                )
             }
         }
     }
 }
-
-
 
 var SharedPreferences.useBackCamera: Boolean
     get() = this.getBoolean("use_back_camera", false)

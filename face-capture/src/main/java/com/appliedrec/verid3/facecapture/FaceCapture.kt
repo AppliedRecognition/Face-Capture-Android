@@ -63,7 +63,7 @@ private class CaptureFaceContract : ActivityResultContract<FaceCaptureConfigurat
 
     override fun parseResult(resultCode: Int, intent: Intent?): FaceCaptureSessionResult {
         if (resultCode == Activity.RESULT_CANCELED) {
-            return FaceCaptureSessionResult.Cancelled()
+            return FaceCaptureSessionResult.Cancelled
         }
         val model = ViewModelProvider(SharedViewModelStoreOwner)[FaceCaptureViewModel::class.java]
         val result = if (resultCode == Activity.RESULT_OK) {

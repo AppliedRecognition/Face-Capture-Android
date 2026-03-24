@@ -5,7 +5,7 @@ sealed class FaceCaptureSessionResult {
     abstract val metadata: Map<String, TaskResults<*>>
     data class Success(override val capturedFaces: List<CapturedFace>, override val metadata: Map<String, TaskResults<out Any?>>) : FaceCaptureSessionResult()
     data class Failure(override val capturedFaces: List<CapturedFace>, override val metadata: Map<String, TaskResults<out Any?>>, val error: Throwable) : FaceCaptureSessionResult()
-    class Cancelled: FaceCaptureSessionResult() {
+    data object Cancelled: FaceCaptureSessionResult() {
         override val capturedFaces: List<CapturedFace> = emptyList()
         override val metadata: Map<String, TaskResults<out Any?>> = emptyMap()
     }
