@@ -1,7 +1,6 @@
 package com.appliedrec.verid3.facecapture
 
 import android.graphics.RectF
-import android.util.Log
 import com.appliedrec.verid3.common.Bearing
 import com.appliedrec.verid3.common.FaceDetection
 import kotlinx.coroutines.CancellationException
@@ -141,16 +140,15 @@ internal class FaceCaptureSessionImpl(
                     else -> FaceCaptureSessionResult.Success(capturedFaces, metadata)
                 }
             }
-            try {
+            // Wrap in NonCancellable so this dispatch always runs, even when cancel() was called.
+            // Without NonCancellable, withContext(Dispatchers.Main) throws CancellationException on
+            // a cancelled job and _result.value would never be set.
+            withContext(NonCancellable) {
                 withContext(Dispatchers.Main) {
                     if (_result.value == null) {
                         _result.value = result
                     }
                 }
-                this@FaceCaptureSessionImpl.sessionTask?.cancel()
-                this@FaceCaptureSessionImpl.sessionTask = null
-            } catch (e: Exception) {
-                Log.e("Ver-ID session", "Failed to dispatch on main", e)
             }
         }
     }
