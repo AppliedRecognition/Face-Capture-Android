@@ -43,9 +43,6 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-    }
     packaging {
         jniLibs {
             pickFirsts.add("lib/arm64-v8a/libonnxruntime.so")

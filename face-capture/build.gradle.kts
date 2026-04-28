@@ -1,4 +1,3 @@
-import org.jetbrains.dokka.gradle.DokkaTaskPartial
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -47,9 +46,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
@@ -123,15 +119,4 @@ mavenPublishing {
 signing {
     useGpgCmd()
     sign(publishing.publications)
-}
-
-dokka {
-    dokkaPublications.html {
-        outputDirectory.set(rootProject.file("docs"))
-    }
-}
-
-tasks.withType<DokkaTaskPartial>().configureEach {
-    moduleName.set("Face capture")
-    moduleVersion.set(project.version.toString())
 }
