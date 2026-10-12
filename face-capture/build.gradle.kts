@@ -74,7 +74,6 @@ dependencies {
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
-    implementation(libs.sceneview)
     implementation(libs.pager)
     implementation(libs.androidx.lifecycle.compose)
     api(libs.kotlinx.serialization.json)
