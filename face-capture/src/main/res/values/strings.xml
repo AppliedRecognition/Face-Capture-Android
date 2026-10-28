@@ -3,7 +3,12 @@
     <string name="preparing_face_detection">Preparing face detection</string>
     <string name="great_hold_it">Great, hold it</string>
     <string name="turn_to_follow_the_arrow">Turn to follow the arrow</string>
-    <string name="align_your_face_with_the_oval">Align your face with the oval</string>
+    <string name="align_your_face_with_the_oval">Align face with oval</string>
+    <string name="face_the_camera">Face the camera</string>
+    <string name="hold_still">Hold still</string>
+    <string name="face_captured">Face captured</string>
+    <string name="prompt_move_closer">Move closer</string>
+    <string name="prompt_move_farther">Move farther</string>
     <string name="tips">Tips</string>
     <string name="tips_shadows">Avoid standing in a light that throws sharp shadows like in sharp sunlight or directly under a lamp.</string>
     <string name="tips_glasses">If you can, take off your glasses.</string>

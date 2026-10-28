@@ -103,12 +103,12 @@ class AngleBearingEvaluation(private val sessionSettings: FaceCaptureSessionSett
         val pitch = when (bearing) {
             Bearing.UP, Bearing.LEFT_UP, Bearing.RIGHT_UP -> 0 - Float.MAX_VALUE
             Bearing.DOWN, Bearing.LEFT_DOWN, Bearing.RIGHT_DOWN -> pitchDistance - pitchTolerance
-            else -> 0 - pitchDistance + pitchTolerance
+            else -> 0 - (pitchDistance + pitchTolerance)
         }
         val yaw = when (bearing) {
             Bearing.LEFT, Bearing.LEFT_DOWN, Bearing.LEFT_UP -> 0 - Float.MAX_VALUE
             Bearing.RIGHT, Bearing.RIGHT_DOWN, Bearing.RIGHT_UP -> yawDistance - yawTolerance
-            else -> 0 - yawDistance + yawTolerance
+            else -> 0 - (yawDistance + yawTolerance)
         }
         return EulerAngle(yaw, pitch, 0f)
     }
@@ -121,12 +121,12 @@ class AngleBearingEvaluation(private val sessionSettings: FaceCaptureSessionSett
         val pitch = when (bearing) {
             Bearing.UP, Bearing.LEFT_UP, Bearing.RIGHT_UP -> 0 - pitchDistance + pitchTolerance
             Bearing.DOWN, Bearing.LEFT_DOWN, Bearing.RIGHT_DOWN -> Float.MAX_VALUE
-            else -> pitchDistance - pitchTolerance
+            else -> pitchDistance + pitchTolerance
         }
         val yaw = when (bearing) {
             Bearing.LEFT, Bearing.LEFT_DOWN, Bearing.LEFT_UP -> 0 - yawDistance + yawTolerance
             Bearing.RIGHT, Bearing.RIGHT_DOWN, Bearing.RIGHT_UP -> Float.MAX_VALUE
-            else -> yawDistance - yawTolerance
+            else -> yawDistance + yawTolerance
         }
         return EulerAngle(yaw, pitch, 0f)
     }

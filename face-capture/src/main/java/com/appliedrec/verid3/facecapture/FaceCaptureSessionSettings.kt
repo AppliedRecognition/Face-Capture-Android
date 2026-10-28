@@ -12,14 +12,16 @@ class FaceCaptureSessionSettings() : Parcelable {
     val availableBearings: Set<Bearing> = setOf(Bearing.STRAIGHT, Bearing.LEFT, Bearing.RIGHT)
     val pauseDuration: Long = 1500
     var faceCaptureCount: Int = 1
-    var yawThreshold: Float = 17f
+    var yawThreshold: Float = 20f
     var pitchThreshold: Float = 15f
-    var yawThresholdTolerance: Float = 5f
-    var pitchThresholdTolerance: Float = 5f
+    var yawThresholdTolerance: Float = 0f
+    var pitchThresholdTolerance: Float = 0f
     var faceAspectRatio: Float = 4f/5f
     var expectedFaceBoundsWidth: Float = 0.55f
     var expectedFaceBoundsHeight: Float = 0.7f
     var countdownSeconds: Int = 3
+    var minFaceWidthRatio: Float = 0.80f
+    var maxFaceWidthRatio: Float = 1.25f
 
     constructor(parcel: Parcel) : this() {
         faceCaptureCount = parcel.readInt()
@@ -31,6 +33,8 @@ class FaceCaptureSessionSettings() : Parcelable {
         expectedFaceBoundsWidth = parcel.readFloat()
         expectedFaceBoundsHeight = parcel.readFloat()
         countdownSeconds = parcel.readInt()
+        minFaceWidthRatio = parcel.readFloat()
+        maxFaceWidthRatio = parcel.readFloat()
     }
 
     fun expectedFaceBoundsInSize(width: Float, height: Float): RectF {
@@ -61,6 +65,8 @@ class FaceCaptureSessionSettings() : Parcelable {
         parcel.writeFloat(expectedFaceBoundsWidth)
         parcel.writeFloat(expectedFaceBoundsHeight)
         parcel.writeInt(countdownSeconds)
+        parcel.writeFloat(minFaceWidthRatio)
+        parcel.writeFloat(maxFaceWidthRatio)
     }
 
     override fun describeContents(): Int {

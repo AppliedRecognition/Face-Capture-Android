@@ -8,15 +8,20 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,6 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
@@ -104,8 +112,6 @@ fun FaceCaptureView(
     }
     val viewState = remember(session) { FaceCaptureViewState() }
     var cameraPermissionGranted by remember { mutableStateOf<Boolean?>(null) }
-    var countdownSeconds by remember { mutableIntStateOf(-1) }
-    var secondsRemainingToStart by remember { mutableIntStateOf(countdownSeconds) }
     val faceTrackingResult by session.faceTrackingResult.collectAsState(initial = FaceTrackingResult.Created(Bearing.STRAIGHT))
     CameraPermissionEffect(
         onGranted = { cameraPermissionGranted = true },
@@ -116,20 +122,6 @@ fun FaceCaptureView(
             imageFlow.onEach { image ->
                 viewState.processImage(image, session)
             }.launchIn(this)
-        }
-    }
-    LaunchedEffect(countdownSeconds) {
-        if (countdownSeconds > 0) {
-            (0..countdownSeconds).asFlow()
-                .flatMapConcat { delay(1000L); flowOf(countdownSeconds - it) }
-                .collect { remaining ->
-                    secondsRemainingToStart = remaining
-                }
-        }
-    }
-    LaunchedEffect(faceTrackingResult) {
-        if (faceTrackingResult is FaceTrackingResult.Launched) {
-            countdownSeconds = session.settings.countdownSeconds
         }
     }
     if (cameraPermissionGranted == null) {
@@ -186,27 +178,53 @@ fun FaceCaptureView(
                 }
                 return@BoxWithConstraints
             }
-            if (faceTrackingResult is FaceTrackingResult.Starting && secondsRemainingToStart > 0) {
-                Text(
-                    text = "%d".format(secondsRemainingToStart),
-                    modifier = Modifier.align(Alignment.Center),
-                    fontSize = ((faceTrackingResult.expectedFaceBounds?.height() ?: 96f) * 0.5f).sp,
-                    color = Color.White
-                )
+            if (faceTrackingResult is FaceTrackingResult.Starting) {
+                val seconds = (faceTrackingResult as FaceTrackingResult.Starting).secondsRemaining
+                if (seconds > 0) {
+                    Text(
+                        text = "%d".format(seconds),
+                        modifier = Modifier.align(Alignment.Center),
+                        fontSize = ((faceTrackingResult.expectedFaceBounds?.height() ?: 96f) * 0.5f).sp,
+                        color = Color.White
+                    )
+                }
             }
             FaceArrow(
                 faceTrackingResult = scaledFaceTrackingResult,
                 angleBearingEvaluation = angleBearingEvaluation,
                 isMirrored = !configuration.useBackCamera
             )
-            if (configuration.showTextPrompts) {
-                Text(
-                    text = prompt,
+            val statusBarTopPx = with(LocalDensity.current) {
+                WindowInsets.statusBars.asPaddingValues().calculateTopPadding().roundToPx()
+            }
+            if (configuration.showTextPrompts && prompt.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.Black.copy(alpha = 0.75f),
+                    contentColor = Color.White,
+                    shadowElevation = 4.dp,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .statusBarsPadding()
-                        .padding(top = 16.dp)
-                )
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height) {
+                                val gapPx = 12.dp.roundToPx()
+                                val targetY = (expectedFaceBounds.top - gapPx - placeable.height).toInt()
+                                val minY = statusBarTopPx + 8.dp.roundToPx()
+                                val y = targetY.coerceAtLeast(minY)
+                                placeable.placeRelative(0, y)
+                            }
+                        }
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Text(
+                        text = prompt,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
     }

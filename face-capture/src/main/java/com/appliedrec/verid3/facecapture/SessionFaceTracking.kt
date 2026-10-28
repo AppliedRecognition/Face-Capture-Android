@@ -32,9 +32,10 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
     var angleHistory: MutableList<EulerAngle<Float>> = mutableListOf()
     var hasFaceBeenFixed: Boolean = false
     var delegate: SessionFaceTrackingDelegate? = null
-    var smoothingBufferSize: Int = 10
+    var smoothingBufferSize: Int = 5
     var launched: Boolean = false
     var started: Boolean = false
+    var countdownStartTime: Long? = null
 
     suspend fun trackFace(imageCapture: FaceCaptureSessionImageInput): FaceTrackingResult {
         val imageSize = SizeFCompat(imageCapture.image.width.toFloat(), imageCapture.image.height.toFloat())
@@ -49,22 +50,81 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
             val alignedFace = AlignedFace(face)
             this.faces.append(alignedFace)
             val smoothedFace = this.smoothedFace!!
-            if (imageCapture.time < settings.countdownSeconds * 1000) {
-                return FaceTrackingResult.Starting(
-                    this.requestedBearing,
-                    expectedFaceBounds,
-                    imageCapture,
-                    smoothedFace
-                )
-            } else if (!started) {
-                started = true
-                return FaceTrackingResult.Started(
-                    this.requestedBearing,
-                    expectedFaceBounds,
-                    imageCapture,
-                    smoothedFace
-                )
+
+            if (!started) {
+                val faceWidth = smoothedFace.bounds.width()
+                val expectedWidth = expectedFaceBounds.width()
+                val ratio = faceWidth / expectedWidth
+                val isDistanceValid = ratio in settings.minFaceWidthRatio..settings.maxFaceWidthRatio
+                val isFaceInBounds = expectedFaceBounds.contains(smoothedFace.bounds.centerX(), smoothedFace.bounds.centerY())
+                val isAngleValid = this.angleBearingEvaluation.angleMatchesBearing(smoothedFace.angle, this.requestedBearing)
+                android.util.Log.d("SessionFaceTracking", "smoothedYaw=${smoothedFace.angle.yaw}, smoothedPitch=${smoothedFace.angle.pitch}, isAngleValid=$isAngleValid, isDistValid=$isDistanceValid, isCentered=$isFaceInBounds, countdownStartTime=$countdownStartTime")
+
+                if (!isDistanceValid || !isFaceInBounds || !isAngleValid) {
+                    countdownStartTime = null
+                    return if (!isAngleValid && isDistanceValid && isFaceInBounds) {
+                        FaceTrackingResult.FaceMisaligned(
+                            this.requestedBearing,
+                            expectedFaceBounds,
+                            imageCapture,
+                            alignedFace.face,
+                            smoothedFace
+                        )
+                    } else {
+                        FaceTrackingResult.FaceFound(
+                            this.requestedBearing,
+                            expectedFaceBounds,
+                            imageCapture,
+                            alignedFace.face,
+                            smoothedFace
+                        )
+                    }
+                }
+
+                if (settings.countdownSeconds > 0) {
+                    if (countdownStartTime == null) {
+                        countdownStartTime = imageCapture.time
+                    }
+                    val elapsed = imageCapture.time - countdownStartTime!!
+                    val totalCountdownMs = settings.countdownSeconds * 1000L
+                    if (elapsed < totalCountdownMs) {
+                        val secondsRemaining = (settings.countdownSeconds - (elapsed / 1000L)).toInt()
+                        return FaceTrackingResult.Starting(
+                            this.requestedBearing,
+                            expectedFaceBounds,
+                            imageCapture,
+                            smoothedFace,
+                            secondsRemaining = secondsRemaining
+                        )
+                    } else {
+                        started = true
+                        this.hasFaceBeenFixed = true
+                        val capturedFace = alignedFace.face
+                        return if (this.delegate != null) {
+                            this.delegate!!.transformFaceResult(
+                                FaceTrackingResult.FaceAligned(
+                                    this.requestedBearing,
+                                    expectedFaceBounds,
+                                    imageCapture,
+                                    capturedFace,
+                                    smoothedFace
+                                )
+                            )
+                        } else {
+                            FaceTrackingResult.FaceCaptured(
+                                this.requestedBearing,
+                                expectedFaceBounds,
+                                imageCapture,
+                                capturedFace,
+                                smoothedFace
+                            )
+                        }
+                    }
+                } else {
+                    started = true
+                }
             }
+
             val angleMatchesBearing = this.angleBearingEvaluation.angleMatchesBearing(
                 smoothedFace.angle,
                 this.requestedBearing
@@ -94,14 +154,15 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
                     }
                 }
             }
-        } else if (imageCapture.time < settings.countdownSeconds * 1000) {
-            return FaceTrackingResult.Starting(
+        } else {
+            countdownStartTime = null
+            this.faces.clear()
+            this.angleHistory.clear()
+            return FaceTrackingResult.Started(
                 this.requestedBearing,
                 expectedFaceBounds,
                 imageCapture
             )
-        } else {
-            this.angleHistory.clear()
         }
         var result: FaceTrackingResult = FaceTrackingResult.Started(
             this.requestedBearing,
@@ -184,7 +245,23 @@ internal class SessionFaceTracking(private val faceDetection: FaceDetection, pri
             throw Exception("Active liveness failed")
         }
         if (!this.faces.isEmpty) {
-            return FaceTrackingResult.FaceFound(this.requestedBearing, expectedFaceBounds, imageCapture, this.faces.last!!.face, smoothedFace!!)
+            return if (started) {
+                FaceTrackingResult.FaceFixed(
+                    this.requestedBearing,
+                    expectedFaceBounds,
+                    imageCapture,
+                    this.faces.last!!.face,
+                    smoothedFace!!
+                )
+            } else {
+                FaceTrackingResult.FaceFound(
+                    this.requestedBearing,
+                    expectedFaceBounds,
+                    imageCapture,
+                    this.faces.last!!.face,
+                    smoothedFace!!
+                )
+            }
         }
         return result
     }
