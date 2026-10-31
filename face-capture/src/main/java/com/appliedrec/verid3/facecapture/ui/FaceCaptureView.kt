@@ -157,7 +157,10 @@ fun FaceCaptureView(
                 expectedFaceBounds,
                 !configuration.useBackCamera
             )
-            val prompt = configuration.textPromptProvider(scaledFaceTrackingResult)
+            val promptProvider = remember(configuration, session.settings) {
+                configuration.customTextPromptProvider ?: configuration.createDefaultTextPromptProvider(session.settings)
+            }
+            val prompt = promptProvider(scaledFaceTrackingResult)
 
             val cameraTransform: GraphicsLayerScope.() -> Unit = createCameraTransform(
                 scaledFaceTrackingResult = scaledFaceTrackingResult,

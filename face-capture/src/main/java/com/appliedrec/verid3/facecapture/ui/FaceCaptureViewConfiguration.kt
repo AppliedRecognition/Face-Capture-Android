@@ -1,34 +1,59 @@
 package com.appliedrec.verid3.facecapture.ui
 
 import android.content.Context
+import com.appliedrec.verid3.facecapture.FaceCaptureSessionSettings
 import com.appliedrec.verid3.facecapture.FaceTrackingResult
 import com.appliedrec.verid3.facecapture.R
 import kotlinx.coroutines.flow.MutableStateFlow
+
+/**
+ * Provides string messages displayed during face capture.
+ *
+ * Developers can override any method in this class to provide dynamic, runtime,
+ * or custom-translated strings without modifying the tracking logic.
+ *
+ * Alternatively, standard Android resource qualifiers (such as res/values-de/, res/values-ja/)
+ * can be added to the consuming application to override or extend localized strings automatically.
+ */
+open class FaceCapturePromptStrings {
+    open fun holdStill(context: Context): String = context.getString(R.string.hold_still)
+    open fun moveCloser(context: Context): String = context.getString(R.string.prompt_move_closer)
+    open fun moveFarther(context: Context): String = context.getString(R.string.prompt_move_farther)
+    open fun faceTheCamera(context: Context): String = context.getString(R.string.face_the_camera)
+    open fun alignFaceWithOval(context: Context): String = context.getString(R.string.align_your_face_with_the_oval)
+    open fun faceCaptured(context: Context): String = context.getString(R.string.face_captured)
+    open fun preparingFaceDetection(context: Context): String = context.getString(R.string.preparing_face_detection)
+}
 
 class FaceCaptureViewConfiguration(
     val context: Context,
     val useBackCamera: Boolean = false,
     textPromptProvider: ((FaceTrackingResult) -> String)? = null,
+    val promptStrings: FaceCapturePromptStrings = FaceCapturePromptStrings(),
     var textPrompt: MutableStateFlow<String?> = MutableStateFlow(null),
     var showTextPrompts: Boolean = true,
     var showCancelButton: Boolean = true
 ) {
-    var textPromptProvider: (FaceTrackingResult) -> String = if (textPromptProvider != null) { textPromptProvider } else {
+    val customTextPromptProvider: ((FaceTrackingResult) -> String)? = textPromptProvider
+
+    fun createDefaultTextPromptProvider(sessionSettings: FaceCaptureSessionSettings): (FaceTrackingResult) -> String {
         var countdownFinished = false
-        { result ->
+        val minRatio = sessionSettings.minFaceWidthRatio
+        val maxRatio = sessionSettings.maxFaceWidthRatio
+        return { result ->
             when {
                 result is FaceTrackingResult.FaceCaptured || countdownFinished -> {
                     countdownFinished = true
-                    context.getString(R.string.face_captured)
+                    promptStrings.faceCaptured(context)
                 }
                 result is FaceTrackingResult.Starting -> {
-                    context.getString(R.string.hold_still)
+                    promptStrings.holdStill(context)
                 }
                 result is FaceTrackingResult.FaceFixed || result is FaceTrackingResult.FaceAligned -> {
-                    context.getString(R.string.hold_still)
+                    promptStrings.holdStill(context)
                 }
                 result is FaceTrackingResult.FaceMisaligned -> {
-                    context.getString(R.string.face_the_camera)
+                    promptStrings.faceTheCamera(context)
                 }
                 else -> {
                     val face = result.smoothedFace ?: result.face
@@ -36,19 +61,30 @@ class FaceCaptureViewConfiguration(
                     if (face != null && expected != null) {
                         val ratio = face.bounds.width() / expected.width()
                         when {
-                            ratio < 0.80f -> {
-                                context.getString(R.string.prompt_move_closer)
+                            ratio < minRatio -> {
+                                promptStrings.moveCloser(context)
                             }
-                            ratio > 1.25f -> {
-                                context.getString(R.string.prompt_move_farther)
+                            ratio > maxRatio -> {
+                                promptStrings.moveFarther(context)
                             }
-                            else -> context.getString(R.string.align_your_face_with_the_oval)
+                            else -> promptStrings.alignFaceWithOval(context)
                         }
                     } else {
-                        context.getString(R.string.align_your_face_with_the_oval)
+                        when (result) {
+                            is FaceTrackingResult.Created -> {
+                                promptStrings.preparingFaceDetection(context)
+                            }
+                            else -> {
+                                promptStrings.alignFaceWithOval(context)
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    var textPromptProvider: (FaceTrackingResult) -> String = customTextPromptProvider ?: { result ->
+        createDefaultTextPromptProvider(FaceCaptureSessionSettings())(result)
     }
 }

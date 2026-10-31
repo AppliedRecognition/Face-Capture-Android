@@ -12,8 +12,8 @@ class FaceCaptureSessionSettings() : Parcelable {
     val availableBearings: Set<Bearing> = setOf(Bearing.STRAIGHT, Bearing.LEFT, Bearing.RIGHT)
     val pauseDuration: Long = 1500
     var faceCaptureCount: Int = 1
-    var yawThreshold: Float = 20f
-    var pitchThreshold: Float = 15f
+    var yawThreshold: Float = 12f
+    var pitchThreshold: Float = 10f
     var yawThresholdTolerance: Float = 0f
     var pitchThresholdTolerance: Float = 0f
     var faceAspectRatio: Float = 4f/5f

@@ -1,0 +1,20 @@
+<resources>
+    <string name="title_activity_face_capture">FaceCaptureActivity</string>
+    <string name="preparing_face_detection">Preparando detección facial</string>
+    <string name="great_hold_it">Genial, manténgalo así</string>
+    <string name="turn_to_follow_the_arrow">Gire siguiendo la flecha</string>
+    <string name="align_your_face_with_the_oval">Alinee su rostro con el óvalo</string>
+    <string name="face_the_camera">Mire a la cámara</string>
+    <string name="hold_still">No se mueva</string>
+    <string name="face_captured">Rostro capturado</string>
+    <string name="prompt_move_closer">Acérquese</string>
+    <string name="prompt_move_farther">Aléjese</string>
+    <string name="tips">Consejos</string>
+    <string name="tips_shadows">Evite colocarse bajo una luz que proyecte sombras fuertes, como bajo el sol directo o directamente bajo una lámpara.</string>
+    <string name="tips_glasses">Si es posible, quítese los lentes.</string>
+    <string name="tips_backgrounds">Evite fondos con muchos objetos o movimiento.</string>
+    <string name="loading">Cargando…</string>
+    <string name="camera_permission_denied">Permiso de cámara denegado</string>
+    <string name="cancel">Cancelar</string>
+    <string name="finishing_capture">Finalizando captura facial</string>
+</resources>
